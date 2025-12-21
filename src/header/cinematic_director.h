@@ -79,6 +79,8 @@ public:
     
     // 獲取翻滾開始時間（用於停止走路動畫）
     float GetRollStartTime() const { return m_RollStartTime; }
+    
+    bool IsRollFinished() const { return m_RollFinished; }
 
 private:
     // 參考到主程式的相機和模型
@@ -115,6 +117,9 @@ private:
     
     // 內部函式：平滑插值（Ease in-out）
     float SmoothStep(float t);
+
+    bool m_RollFinished;   // 翻滾是否已結束（用於觸發爆炸效果）
+
 };
 
 #endif

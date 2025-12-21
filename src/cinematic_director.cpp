@@ -14,6 +14,7 @@ CinematicDirector::CinematicDirector(camera_t& cam, glm::mat4& charModel, glm::m
     , m_IsPlaying(false)
     , m_Loop(false)
     , m_RollStartTime(-1.0f) // 初始化為-1，表示尚未開始翻滾
+    , m_RollFinished(false)  // 初始化為false，表示翻滾尚未結束
 {
     InitializeKeyframes();
     // 初始化時設置初始位置（確保與 main_animated.cpp 中的初始位置一致）
@@ -122,23 +123,30 @@ void CinematicDirector::InitializeKeyframes() {
         glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: (0,0,0)
         2.0f));                             // 持續2秒，過渡到特寫位置
     
-    // 5秒後：臉部特寫，固定在此位置
+    // 5-7秒：臉部特寫，固定在此位置
     // 相機在特寫位置，x座標往-x一點，跟到人物的x座標（0）
     m_Keyframes.push_back(Keyframe(5.0f,
         glm::vec3(-5.0f, 10.3934f, 70.7176f),    // 相機位置：x往-x一點（-5），跟到人物x座標（0），其他保持不變
         glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: (0,0,0)
-        1000.0f));                             // 持續很長時間，固定在此位置（不移到其他鏡頭）
+        2.0f));                             // 持續2秒（5-7秒）
+    
+    // 7秒後：相機位置不變，但lookat的z座標反過來，開始拍車子
+    // 相機保持在特寫位置，但lookat指向車子方向（z座標反過來）
+    m_Keyframes.push_back(Keyframe(7.0f,
+        glm::vec3(-5.0f, 10.3934f, 70.7176f),    // 相機位置：保持不變
+        glm::vec3(0.0f, 0.0f, 150.0f),    // LookAt: z座標反過來（從0變成150，指向車子初始位置）
+        1000.0f));                             // 持續很長時間，固定在此位置
     
     std::cout << "Cinematic Director: Initialized " << m_Keyframes.size() << " keyframes" << std::endl;
     std::cout << "  Keyframe 1 (0-3s): Fixed camera position" << std::endl;
     std::cout << "    Camera: (31.3615, 21.9684, 120.577) -> Target: (0, 0, 0)" << std::endl;
     std::cout << "  Keyframe 2 (3-5s): Transition to close-up" << std::endl;
-    std::cout << "    Camera: (31.3615, 21.9684, 120.577) -> (-5, 10.3934, 38.7176), Target: (0, 0, 0)" << std::endl;
-    std::cout << "  Keyframe 3 (5s+): Face close-up, fixed position" << std::endl;
-    std::cout << "    Camera: (-5, 10.3934, 38.7176) -> Target: (0, 0, 0)" << std::endl;
-    std::cout << "  Keyframe 4 (7-10s): Following car movement (+X direction)" << std::endl;
-    std::cout << "    Camera: (25, 12, 15) -> Target: (following car)" << std::endl;
-    std::cout << "  Note: Head rotation starts at 5 seconds, Car starts moving at 5 seconds" << std::endl;
+    std::cout << "    Camera: (31.3615, 21.9684, 120.577) -> (-5, 10.3934, 70.7176), Target: (0, 0, 0)" << std::endl;
+    std::cout << "  Keyframe 3 (5-7s): Face close-up, fixed position" << std::endl;
+    std::cout << "    Camera: (-5, 10.3934, 70.7176) -> Target: (0, 0, 0)" << std::endl;
+    std::cout << "  Keyframe 4 (7s+): Camera fixed, lookat z reversed, following car" << std::endl;
+    std::cout << "    Camera: (-5, 10.3934, 70.7176) -> Target: (following car, z reversed)" << std::endl;
+    std::cout << "  Note: Head rotation starts at 5 seconds, Car starts moving at 6 seconds" << std::endl;
 }
 
 void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
@@ -204,11 +212,17 @@ void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     glm::vec3 cameraPos = glm::mix(keyframe1.cameraPosition, keyframe2.cameraPosition, smoothT);
     glm::vec3 cameraTarget = glm::mix(keyframe1.cameraTarget, keyframe2.cameraTarget, smoothT);
     
-    // 5秒後：使用關鍵幀插值，x座標跟隨人物的x座標，其他固定
-    if (currentTime >= 5.0f) {
+    // 5-7秒：使用關鍵幀插值，x座標跟隨人物的x座標，其他固定
+    if (currentTime >= 5.0f && currentTime < 7.0f) {
         // 相機x座標跟隨人物的x座標（往-x一點）
         cameraPos.x = characterPos.x - 5.0f; // 往-x一點，跟到人物的x座標
         // 其他座標保持關鍵幀插值的結果
+    }
+    // 7秒後：相機位置不變，但lookat跟隨車子移動
+    else if (currentTime >= 7.0f) {
+        // 相機位置保持不變（使用關鍵幀插值）
+        // lookat跟隨車子移動（z座標反過來，指向車子）
+        cameraTarget = glm::vec3(cartPos.x, cartPos.y, cartPos.z); // 直接看向車子位置
     }
     
     // 更新相機
@@ -335,13 +349,25 @@ void CinematicDirector::UpdateHeadRotation(float currentTime) {
         rotationProgress = glm::clamp(rotationProgress, 0.0f, 1.0f);
     }
     
-    // 使用平滑函數讓轉頭更自然
-    float smoothProgress = SmoothStep(rotationProgress);
+    // 在5-6秒期間，使用線性插值讓轉頭更快更明顯（不使用平滑函數）
+    // 6秒後，保持完成狀態（smoothProgress = 1.0）
+    // 其他時間使用平滑函數讓轉頭更自然
+    float smoothProgress;
+    if (currentTime >= headRotationStartTime && currentTime <= headRotationEndTime) {
+        // 直接使用線性插值，讓轉頭更快
+        smoothProgress = rotationProgress;
+    } else if (currentTime > headRotationEndTime) {
+        // 6秒後，保持完成狀態，不變
+        smoothProgress = 1.0f;
+    } else {
+        // 5秒前，使用平滑函數
+        smoothProgress = SmoothStep(rotationProgress);
+    }
     
     // 計算頭部應該轉向的角度（繞X軸，上下轉，點頭/抬頭）
     // 根據相機位置計算頭部應該轉向的垂直角度
     
-    float maxRotationAngle = 90.0f; // 最大旋轉角度（度），增大到90度讓轉動更明顯
+    float maxRotationAngle = 70.0f; // 最大旋轉角度（度），增大到90度讓轉動更明顯
     
     // 根據相機位置計算頭部應該轉向的角度
     // 獲取角色當前位置（從模型矩陣中提取）
@@ -357,12 +383,20 @@ void CinematicDirector::UpdateHeadRotation(float currentTime) {
     float horizontalDist = sqrt(cameraDirection.x * cameraDirection.x + cameraDirection.z * cameraDirection.z);
     float targetPitch = glm::degrees(atan2(-cameraDirection.y, horizontalDist));
     
-    // 確保在第5秒時有明顯的轉頭動作
+    // 在5-6秒期間，強制使用最大旋轉角度，讓轉頭動作更明顯
     // 相機在下方時，點頭（正角度）
     // 相機在上方時，抬頭（負角度）
-    // 如果計算出的角度太小，使用固定的大角度
-    if (abs(targetPitch) < 15.0f) {
-        // 根據相機Y位置決定方向
+    // 6秒後，保持最後的角度不變
+    static float finalTargetPitch = 0.0f; // 保存6秒時的最終角度
+    static bool finalTargetPitchSet = false; // 標記是否已設置最終角度
+    
+    // 在5秒前，重置標記（為動畫重新開始做準備）
+    if (currentTime < headRotationStartTime) {
+        finalTargetPitchSet = false;
+    }
+    
+    if (currentTime >= headRotationStartTime && currentTime <= headRotationEndTime) {
+        // 在轉頭期間，根據相機Y位置決定方向，使用最大角度
         if (m_Camera.position.y < headPosition.y) {
             // 相機在頭部下方，向下點頭
             targetPitch = maxRotationAngle;
@@ -370,12 +404,40 @@ void CinematicDirector::UpdateHeadRotation(float currentTime) {
             // 相機在頭部上方，向上抬頭
             targetPitch = -maxRotationAngle;
         }
+        // 保存最終角度（在接近6秒時）
+        if (currentTime >= headRotationEndTime - 0.01f && !finalTargetPitchSet) {
+            finalTargetPitch = targetPitch;
+            finalTargetPitchSet = true;
+        }
+    } else if (currentTime > headRotationEndTime) {
+        // 6秒後，使用保存的最終角度，保持不變
+        if (finalTargetPitchSet) {
+            targetPitch = finalTargetPitch;
+        } else {
+            // 如果還沒有設置，使用當前計算的角度（備用方案）
+            targetPitch = (m_Camera.position.y < headPosition.y) ? maxRotationAngle : -maxRotationAngle;
+            finalTargetPitch = targetPitch;
+            finalTargetPitchSet = true;
+        }
+    } else {
+        // 5秒前，如果計算出的角度太小，使用固定的大角度
+        if (abs(targetPitch) < 15.0f) {
+            // 根據相機Y位置決定方向
+            if (m_Camera.position.y < headPosition.y) {
+                // 相機在頭部下方，向下點頭
+                targetPitch = maxRotationAngle;
+            } else {
+                // 相機在頭部上方，向上抬頭
+                targetPitch = -maxRotationAngle;
+            }
+        }
+        // 限制旋轉角度範圍（避免過度轉頭）
+        targetPitch = glm::clamp(targetPitch, -maxRotationAngle, maxRotationAngle);
     }
     
-    // 限制旋轉角度範圍（避免過度轉頭）
-    targetPitch = glm::clamp(targetPitch, -maxRotationAngle, maxRotationAngle);
-    
     // 根據進度插值旋轉角度（從0度到目標角度）
+    // 在5-6秒期間，使用線性插值讓轉頭更快更明顯（不使用平滑函數）
+    // 6秒後，保持最終角度不變（smoothProgress = 1.0）
     float rotationAngle = -1 * smoothProgress * targetPitch;
     
     // 添加調試輸出（5-6秒期間）
@@ -825,6 +887,10 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
                 return;
             } else {
                 // 翻滾結束後：停在最終位置
+                if (!m_RollFinished) {
+                    m_RollFinished = true;
+                    std::cout << "Roll finished! Triggering explode effect..." << std::endl;
+                }
                 m_CharacterModel = glm::mat4(1.0f);
                 m_CharacterModel = glm::scale(m_CharacterModel, glm::vec3(0.1f, 0.1f, 0.1f));
                 m_CharacterModel = glm::translate(m_CharacterModel, flyEndPos);

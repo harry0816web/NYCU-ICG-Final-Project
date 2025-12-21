@@ -52,7 +52,12 @@ std::vector<shader_program_t*> shaderPrograms;
 shader_program_t* cubemapShader;
 shader_program_t* rainShader;
 shader_program_t* motionBlurShader = nullptr;
+shader_program_t* explodeShader = nullptr;
 
+// explode effect
+bool enableExplode = false;
+float explodeStartTime = -1.0f;
+float explodeDuration = 2.0f;  // 爆炸動畫持續時間
 StaticModel* cityModel = nullptr;
 glm::mat4 cityMatrix;
 
@@ -305,6 +310,17 @@ void shader_setup(){
     motionBlurShader->add_shader(motionBlurGeomPath, GL_GEOMETRY_SHADER);
     motionBlurShader->add_shader(motionBlurFragPath, GL_FRAGMENT_SHADER);
     motionBlurShader->link_shader();
+
+    // Create explode shader (for animated model with geometry shader)
+    explodeShader = new shader_program_t();
+    explodeShader->create();
+    std::string explodeVertPath = shaderDir + "animated_explode.vert";
+    std::string explodeGeomPath = shaderDir + "animated_explode.geom";
+    std::string explodeFragPath = shaderDir + "animated_explode.frag";
+    explodeShader->add_shader(explodeVertPath, GL_VERTEX_SHADER);
+    explodeShader->add_shader(explodeGeomPath, GL_GEOMETRY_SHADER);
+    explodeShader->add_shader(explodeFragPath, GL_FRAGMENT_SHADER);
+    explodeShader->link_shader();
 }
 
 void cubemap_setup(){
@@ -424,8 +440,12 @@ void update(){
             cinematicDirector->UpdateCartMovement(animationTime);
             cinematicDirector->UpdateHeadRotation(animationTime);
             cinematicDirector->UpdateCameraWithTime(animationTime); // 更新相機
-            // 注意：m_CharacterModel 和 m_CartModel 是引用，直接更新了 modelMatrix 和 cartMatrix
-            // 所以不需要再次賦值
+            // 檢查是否滾動結束並觸發爆炸
+            if (cinematicDirector->IsRollFinished() && !enableExplode) {
+                enableExplode = true;
+                explodeStartTime = currentTime;
+                std::cout << "Explode effect started!" << std::endl;
+            }
         } else {
             // 動畫未開始時，確保使用初始位置（與 model_setup 中設置的一致）
             // 這樣動畫開始時會從初始位置開始
@@ -466,80 +486,85 @@ void render(){
     }
 
     // Render animated model
-    if (shaderProgramIndex < shaderPrograms.size()) {
+    // 判斷是否使用爆炸效果
+    shader_program_t* currentShader = nullptr;
+    float explodeStrength = 0.0f;
+    
+    if (enableExplode && explodeShader) {
+        currentShader = explodeShader;
+        // 計算爆炸強度 (0.0 到 1.0+)
+        float timeSinceExplode = currentTime - explodeStartTime;
+        explodeStrength = timeSinceExplode / explodeDuration;
+        // 不限制上限，讓爆炸可以持續擴散
+    } else if (shaderProgramIndex < shaderPrograms.size()) {
+        currentShader = shaderPrograms[shaderProgramIndex];
+    }
+    
+    if (currentShader) {
         // Set matrix for view, projection, model transformation
-        shaderPrograms[shaderProgramIndex]->use();
+        currentShader->use();
         
         // Common uniforms for all shaders
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("model", modelMatrix);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("view", view);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("projection", projection);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("viewPos", camera.position);
+        currentShader->set_uniform_value("model", modelMatrix);
+        currentShader->set_uniform_value("view", view);
+        currentShader->set_uniform_value("projection", projection);
+        currentShader->set_uniform_value("viewPos", camera.position);
         
-        // todo1-1: Set lighting and material uniforms for all shaders
-        // use shader_program_t::set_uniform_value() to set different types of uniforms
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("lightPos", light.position);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("lightAmbient", light.ambient);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("lightDiffuse", light.diffuse);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("lightSpecular", light.specular);
+        // 如果是爆炸 shader，設置額外的 uniform
+        if (enableExplode && explodeShader && currentShader == explodeShader) {
+            currentShader->set_uniform_value("time", currentTime);
+            currentShader->set_uniform_value("explodeStrength", explodeStrength);
+        } else {
+            // 非爆炸 shader 的 lighting 和 material uniforms
+            currentShader->set_uniform_value("lightPos", light.position);
+            currentShader->set_uniform_value("lightAmbient", light.ambient);
+            currentShader->set_uniform_value("lightDiffuse", light.diffuse);
+            currentShader->set_uniform_value("lightSpecular", light.specular);
+            
+            currentShader->set_uniform_value("materialAmbient", material.ambient);
+            currentShader->set_uniform_value("materialDiffuse", material.diffuse);
+            currentShader->set_uniform_value("materialSpecular", material.specular);
+            currentShader->set_uniform_value("materialShininess", material.gloss);
+
+            // Set cubemap sampler for metallic and glass shaders
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            GLint skyboxLoc = glGetUniformLocation(currentShader->get_program_id(), "skybox");
+            if (skyboxLoc != -1) {
+                glUniform1i(skyboxLoc, 1);
+            }
+
+            // Set metallic shader specific uniforms
+            if (shaderProgramIndex == 3) {
+                currentShader->set_uniform_value("bias", 0.2f);
+                currentShader->set_uniform_value("alpha", 0.4f);
+                currentShader->set_uniform_value("lightIntensity", 1.0f);
+            }
+
+            // Set glass shader specific uniforms
+            if (shaderProgramIndex == 4) {
+                float eta = 1.0f / 1.52f;
+                currentShader->set_uniform_value("eta", eta);
+            }
+        }
         
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("materialAmbient", material.ambient);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("materialDiffuse", material.diffuse);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("materialSpecular", material.specular);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("materialShininess", material.gloss);
-
-        // todo1-2: Set cubemap sampler for metallic and glass shaders to interact with the skybox
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        GLint skyboxLoc = glGetUniformLocation(shaderPrograms[shaderProgramIndex]->get_program_id(), "skybox");
-        if (skyboxLoc != -1) {
-            glUniform1i(skyboxLoc, 1);
-        }
-
-        // todo1-3: Set metallic shader specific uniforms
-        if (shaderProgramIndex == 3) {
-            shaderPrograms[shaderProgramIndex]->set_uniform_value("bias", 0.2f);
-            shaderPrograms[shaderProgramIndex]->set_uniform_value("alpha", 0.4f);
-            shaderPrograms[shaderProgramIndex]->set_uniform_value("lightIntensity", 1.0f);
-        }
-
-        // todo1-4: Set glass shader specific uniforms
-        if (shaderProgramIndex == 4) {
-            float eta = 1.0f / 1.52f;  // n1/n2
-            shaderPrograms[shaderProgramIndex]->set_uniform_value("eta", eta);
-        }
-        
-        // TODO: Set uniform value for each shader program
         // Set texture
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, animatedModel->texture);
-        shaderPrograms[shaderProgramIndex]->set_uniform_value("ourTexture", 0);
+        currentShader->set_uniform_value("ourTexture", 0);
         
-        // Specifying texture & cubemap sampler for shader program
-        
-        // Set bone matrices for animation (only for animated shaders)
-        // The animated shaders have "animated_" prefix, so we know they support bone matrices
-        // For original shaders without bone support, skip this to avoid GL errors
-        std::vector<std::string> shadingMethod = {
-            "default", "bling-phong", "gouraud", "metallic", "glass_schlick"
-        };
-        
-        // Only set bone matrices for animated shaders (we know these have the uniforms)
-        if (shaderProgramIndex < shadingMethod.size()) {
-            // Check if the shader has bone matrices uniform before setting it
-            GLint boneMatricesLocation = glGetUniformLocation(shaderPrograms[shaderProgramIndex]->get_program_id(), "finalBonesMatrices");
-            if (boneMatricesLocation != -1) {
-                // Set bone matrices - use actual bone count (up to 200)
-                size_t numBones = std::min((size_t)200, animatedModel->m_FinalBoneMatrices.size());
-                for (unsigned int i = 0; i < numBones; ++i) {
-                    std::string name = "finalBonesMatrices[" + std::to_string(i) + "]";
-                    shaderPrograms[shaderProgramIndex]->set_uniform_value(name.c_str(), animatedModel->m_FinalBoneMatrices[i]);
-                }
+        // Set bone matrices for animation
+        GLint boneMatricesLocation = glGetUniformLocation(currentShader->get_program_id(), "finalBonesMatrices");
+        if (boneMatricesLocation != -1) {
+            size_t numBones = std::min((size_t)200, animatedModel->m_FinalBoneMatrices.size());
+            for (unsigned int i = 0; i < numBones; ++i) {
+                std::string name = "finalBonesMatrices[" + std::to_string(i) + "]";
+                currentShader->set_uniform_value(name.c_str(), animatedModel->m_FinalBoneMatrices[i]);
             }
         }
         
         animatedModel->render();
-        shaderPrograms[shaderProgramIndex]->release();
+        currentShader->release();
     }
 
     // Render cart (static model)
@@ -662,6 +687,7 @@ int main() {
 
     // cleanup
     delete animatedModel;
+    if (explodeShader) delete explodeShader;
     if (cartModel) delete cartModel;
     if (cityModel) delete cityModel;
     for (auto shader : shaderPrograms) {
