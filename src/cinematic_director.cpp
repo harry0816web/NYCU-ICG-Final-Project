@@ -1100,7 +1100,7 @@ void CinematicDirector::UpdateCartMovement(float currentTime) {
     // 起始位置：使用初始位置（與 main_animated.cpp 中的初始位置一致）
     glm::vec3 startPos = glm::vec3(0.0f, 0.0f, 150.0f);
     // 目標位置：往-Z方向移動，多走100單位（從70改為-30）
-    glm::vec3 endPos = glm::vec3(0.0f, 0.0f, -30.0f);
+    glm::vec3 endPos = glm::vec3(0.0f, 0.0f, 70.0f);
     
     if (currentTime < cartMoveStartTime) {
         // 6秒前：車子保持在初始位置（與 main_animated.cpp 中的初始位置一致）
