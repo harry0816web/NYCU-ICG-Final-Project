@@ -1,0 +1,19 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/glfw/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/glfw/src/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/glfw/docs/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/glm/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/glm/glm/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/glad/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/assimp/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/assimp/code/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/assimp/test/cmake_install.cmake",
+		"/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/extern/assimp/test/headercheck/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
