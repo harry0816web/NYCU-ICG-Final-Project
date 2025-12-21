@@ -13,6 +13,7 @@ CinematicDirector::CinematicDirector(camera_t& cam, glm::mat4& charModel, glm::m
     , m_GlobalTime(0.0f)
     , m_IsPlaying(false)
     , m_Loop(false)
+    , m_RollStartTime(-1.0f) // 初始化為-1，表示尚未開始翻滾
 {
     InitializeKeyframes();
     // 初始化時設置初始位置（確保與 main_animated.cpp 中的初始位置一致）
@@ -637,9 +638,11 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
     if (collisionDetected) {
         collisionTime = currentTime;
         collisionPos = characterPos; // 記錄碰撞時的位置
+        // 計算翻滾開始時間（飛行結束時）
+        m_RollStartTime = currentTime + flyDuration;
         std::cout << "COLLISION DETECTED! Distance: " << distance << ", Time: " << currentTime << "s, Character Position: (" 
                   << collisionPos.x << ", " << collisionPos.y << ", " << collisionPos.z << "), Cart Position: ("
-                  << cartPos.x << ", " << cartPos.y << ", " << cartPos.z << ")" << std::endl;
+                  << cartPos.x << ", " << cartPos.y << ", " << cartPos.z << "), Roll Start Time: " << m_RollStartTime << "s" << std::endl;
     }
     
     // 如果已發生碰撞，開始飛行
@@ -738,17 +741,23 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
         float bodyRotationX = -90.0f; // 繞X軸旋轉-90度
         float bodyRotationY = -90.0f; // 繞Y軸旋轉-90度，讓頭部從+X轉到-Z
         
+        // 在飛行過程中完成Y軸旋轉-90度（從0度到-90度）
+        float additionalYRotation = smoothFlyProgress * -90.0f; // 在飛行過程中完成Y軸旋轉-90度
+        
         // 更新角色模型矩陣
         m_CharacterModel = glm::mat4(1.0f);
         m_CharacterModel = glm::scale(m_CharacterModel, glm::vec3(0.1f, 0.1f, 0.1f));
         m_CharacterModel = glm::translate(m_CharacterModel, currentPos);
-        // 先繞X軸旋轉，再繞Y軸旋轉（讓頭部朝向-Z）
+        // 先繞Y軸旋轉（在世界座標系中，因為先應用），在飛行過程中完成Y軸旋轉-90度
+        m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(additionalYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        // 然後應用飛行pose：先繞X軸旋轉，再繞Y軸旋轉（讓頭部朝向-Z）
         m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(bodyRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
         m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(bodyRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
         
         // 計算頭部朝向向量（在模型空間中，頭部是 +Z 方向（向前），需要轉換到世界空間）
         // 頭部在模型空間中是 (0, 0, 1)，需要乘以旋轉矩陣
         glm::mat4 rotationMatrix = glm::mat4(1.0f);
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(additionalYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(bodyRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(bodyRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::vec4 headDirectionModel = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); // 模型空間中頭部方向是 +Z（向前）
@@ -773,68 +782,25 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
         return;
         } else {
             // 飛行結束後：落地並翻滾
-            // 保持飛行結束時的pose：bodyRotationX = -90.0f, bodyRotationY = -90.0f
-            float yRotationDuration = 1.0f; // Y軸旋轉持續時間（1秒）
-            float yRotationStartTime = flyEndTime; // Y軸旋轉開始時間（飛行結束時）
-            float yRotationEndTime = yRotationStartTime + yRotationDuration; // Y軸旋轉結束時間
-            float rollStartTime = yRotationEndTime; // 翻滾開始時間（Y軸旋轉結束後）
+            // Y軸旋轉-90度已經在飛行過程中完成
+            float rollStartTime = flyEndTime; // 翻滾開始時間（飛行結束時，Y軸旋轉已完成）
             float rollEndTime = rollStartTime + rollDuration; // 翻滾結束時間
             
             // 飛行結束時的旋轉（保持飛行pose）
             float flyEndRotationX = -90.0f; // 繞X軸旋轉-90度
             float flyEndRotationY = -90.0f; // 繞Y軸旋轉-90度
+            float additionalYRotation = -90.0f; // Y軸旋轉-90度（已在飛行過程中完成）
             
-            if (currentTime < yRotationEndTime) {
-                // 階段1：落地後先繞世界座標Y軸轉-90度
-                float yRotationProgress = (currentTime - yRotationStartTime) / yRotationDuration;
-                yRotationProgress = glm::clamp(yRotationProgress, 0.0f, 1.0f);
-                
-                // 使用平滑函數讓旋轉更自然
-                float smoothYRotationProgress = SmoothStep(yRotationProgress);
-                
-                // Y軸旋轉角度：從0度到-90度
-                float currentYRotationAngle = smoothYRotationProgress * -90.0f;
-                
-                // 更新角色模型矩陣
-                m_CharacterModel = glm::mat4(1.0f);
-                m_CharacterModel = glm::scale(m_CharacterModel, glm::vec3(0.1f, 0.1f, 0.1f));
-                m_CharacterModel = glm::translate(m_CharacterModel, flyEndPos);
-                
-                // 保持飛行結束時的pose
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(flyEndRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(flyEndRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                
-                // 繞世界座標Y軸旋轉
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(currentYRotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-                
-                // 計算頭頂朝向
-                glm::mat4 rotationMatrix = glm::mat4(1.0f);
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(flyEndRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(flyEndRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(currentYRotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-                glm::vec4 topDirectionModel = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-                glm::vec4 topDirectionWorld = rotationMatrix * topDirectionModel;
-                glm::vec3 topDirection = glm::normalize(glm::vec3(topDirectionWorld));
-                
-                // Debug輸出：頭頂朝向
-                static float lastYRotationPrintTime = -1.0f;
-                if (currentTime - lastYRotationPrintTime > 0.2f) {
-                    std::cout << "Character Y rotation: top_dir(world)=(" << topDirection.x << ", " << topDirection.y << ", " << topDirection.z 
-                              << "), y_angle=" << currentYRotationAngle << "deg, time=" << currentTime << "s" << std::endl;
-                    lastYRotationPrintTime = currentTime;
-                }
-                
-                return;
-            } else if (currentTime < rollEndTime) {
-                // 翻滾階段
+            if (currentTime < rollEndTime) {
+                // 翻滾階段：直接繞世界座標X軸翻滾
                 float rollProgress = (currentTime - rollStartTime) / rollDuration;
                 rollProgress = glm::clamp(rollProgress, 0.0f, 1.0f);
                 
                 // 使用平滑函數讓翻滾更自然
                 float smoothRollProgress = SmoothStep(rollProgress);
                 
-                // 翻滾三圈 = 3 * 360度 = 1080度
-                float totalRollAngle = 1080.0f;
+                // 翻滾三圈少90度 = 3 * 360度 - 90度 = 990度（負角度，反方向）
+                float totalRollAngle = -990.0f;
                 float currentRollAngle = smoothRollProgress * totalRollAngle;
                 
                 // 更新角色模型矩陣
@@ -842,28 +808,25 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
                 m_CharacterModel = glm::scale(m_CharacterModel, glm::vec3(0.1f, 0.1f, 0.1f));
                 m_CharacterModel = glm::translate(m_CharacterModel, flyEndPos);
                 
-                // 保持飛行結束時的pose
+                // 要繞世界座標X軸翻滾，需要先繞X軸旋轉，再繞Y軸旋轉
+                // 1. 先繞世界座標X軸翻滾（在世界座標系中，因為先應用）
+                float rollRotationX = currentRollAngle; // 繞X軸翻滾（負角度，反方向）
+                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
+                
+                // 2. 然後應用Y軸旋轉-90度（已在飛行過程中完成）
+                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(additionalYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+                
+                // 3. 然後保持飛行結束時的pose
                 m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(flyEndRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
                 m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(flyEndRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
                 
-                // 1. 先繞世界座標Y軸轉-90度
-                float initialRotationY = -90.0f; // 繞世界座標Y軸旋轉-90度
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(initialRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                
-                // 2. 然後繞世界座標X軸翻滾（往-Z方向滾）
-                // 注意：由於先繞Y軸旋轉了，此時X軸方向已經改變，所以這不是真正的世界座標X軸
-                // 要繞真正的世界座標X軸，需要先繞X軸旋轉，再繞Y軸旋轉
-                // 但用戶要求先Y後X，所以我們按照要求實現
-                float rollRotationX = currentRollAngle; // 繞X軸翻滾（往-Z方向滾）
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-                
                 // 計算頭頂朝向（在模型空間中，頭頂是 +Y 方向，需要轉換到世界空間）
-                // 旋轉順序：先飛行pose，再Y軸轉-90度，再X軸翻滾
+                // 旋轉順序：先X軸翻滾，再Y軸轉-90度，再飛行pose
                 glm::mat4 rotationMatrix = glm::mat4(1.0f);
+                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
+                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(additionalYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
                 rotationMatrix = glm::rotate(rotationMatrix, glm::radians(flyEndRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
                 rotationMatrix = glm::rotate(rotationMatrix, glm::radians(flyEndRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(initialRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
                 glm::vec4 topDirectionModel = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // 模型空間中頭頂方向是 +Y（向上）
                 glm::vec4 topDirectionWorld = rotationMatrix * topDirectionModel;
                 glm::vec3 topDirection = glm::normalize(glm::vec3(topDirectionWorld));
@@ -879,28 +842,28 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
                 return;
             } else {
                 // 翻滾結束後：停在最終位置
-        m_CharacterModel = glm::mat4(1.0f);
-        m_CharacterModel = glm::scale(m_CharacterModel, glm::vec3(0.1f, 0.1f, 0.1f));
-        m_CharacterModel = glm::translate(m_CharacterModel, flyEndPos);
+                m_CharacterModel = glm::mat4(1.0f);
+                m_CharacterModel = glm::scale(m_CharacterModel, glm::vec3(0.1f, 0.1f, 0.1f));
+                m_CharacterModel = glm::translate(m_CharacterModel, flyEndPos);
                 
-                // 保持飛行結束時的pose
+                // 要繞世界座標X軸翻滾，需要先繞X軸旋轉，再繞Y軸旋轉
+                // 1. 先繞世界座標X軸翻滾三圈少90度（在世界座標系中，因為先應用）
+                float rollRotationX = -990.0f; // 繞X軸翻滾三圈少90度（-990度，負角度，反方向）
+                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
+                
+                // 2. 然後應用Y軸旋轉-90度（已在飛行過程中完成）
+                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(additionalYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+                
+                // 3. 然後保持飛行結束時的pose
                 m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(flyEndRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
                 m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(flyEndRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
                 
-                // 1. 先繞世界座標Y軸轉-90度
-                float initialRotationY = -90.0f; // 繞世界座標Y軸旋轉-90度
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(initialRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                
-                // 2. 然後繞X軸翻滾三圈（1080度）
-                float rollRotationX = 1080.0f; // 繞X軸翻滾三圈（1080度）
-                m_CharacterModel = glm::rotate(m_CharacterModel, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-                
                 // 計算頭頂朝向
                 glm::mat4 rotationMatrix = glm::mat4(1.0f);
+                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
+                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(additionalYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
                 rotationMatrix = glm::rotate(rotationMatrix, glm::radians(flyEndRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
                 rotationMatrix = glm::rotate(rotationMatrix, glm::radians(flyEndRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(initialRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-                rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rollRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
                 glm::vec4 topDirectionModel = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
                 glm::vec4 topDirectionWorld = rotationMatrix * topDirectionModel;
                 glm::vec3 topDirection = glm::normalize(glm::vec3(topDirectionWorld));

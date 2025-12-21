@@ -51,6 +51,7 @@ int shaderProgramIndex = 0;
 std::vector<shader_program_t*> shaderPrograms;
 shader_program_t* cubemapShader;
 shader_program_t* rainShader;
+shader_program_t* motionBlurShader = nullptr;
 
 StaticModel* cityModel = nullptr;
 glm::mat4 cityMatrix;
@@ -124,7 +125,7 @@ void model_setup(){
     // - Y軸：上為正(+Y)，下為負(-Y)
     // - Z軸：前為正(+Z，螢幕外)，後為負(-Z，螢幕裡)
     cartMatrix = glm::mat4(1.0f);
-    cartMatrix = glm::translate(cartMatrix, glm::vec3(0.0f, 0.0f, 100.0f)); // Position: X=-20 (往右一點), Z=40 (往+Z很多，遠離螢幕)
+    cartMatrix = glm::translate(cartMatrix, glm::vec3(0.0f, 0.0f, 150.0f)); // Position: X=-20 (往右一點), Z=40 (往+Z很多，遠離螢幕)
     cartMatrix = glm::rotate(cartMatrix, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // 旋轉180度，讓車頭朝向螢幕裡面（-Z方向）
     cartMatrix = glm::scale(cartMatrix, glm::vec3(10.0f, 10.0f, 10.0f)); // Scale to appropriate size
 
@@ -292,48 +293,61 @@ void shader_setup(){
     staticShader->add_shader(staticVertPath, GL_VERTEX_SHADER);
     staticShader->add_shader(staticFragPath, GL_FRAGMENT_SHADER);
     staticShader->link_shader();
+
+    // motion blur shader
+    // Create motion blur shader (for cart with motion blur effect)
+    motionBlurShader = new shader_program_t();
+    motionBlurShader->create();
+    std::string motionBlurVertPath = shaderDir + "motion_blur.vert";
+    std::string motionBlurGeomPath = shaderDir + "motion_blur.geom";
+    std::string motionBlurFragPath = shaderDir + "motion_blur.frag";
+    motionBlurShader->add_shader(motionBlurVertPath, GL_VERTEX_SHADER);
+    motionBlurShader->add_shader(motionBlurGeomPath, GL_GEOMETRY_SHADER);
+    motionBlurShader->add_shader(motionBlurFragPath, GL_FRAGMENT_SHADER);
+    motionBlurShader->link_shader();
 }
 
 void cubemap_setup(){
-#if defined(__linux__) || defined(__APPLE__)
-    std::string cubemapDir = "asset/texture/skybox/";
-    std::string shaderDir = "shaders/";
-#else
-    std::string cubemapDir = "..\\..\\src\\asset\\texture\\skybox\\";
-    std::string shaderDir = "..\\..\\src\\shaders\\";
-#endif
-
-    // setup texture for cubemap
-    std::vector<std::string> faces
-    {
-        cubemapDir + "px.jpg",
-        cubemapDir + "nx.jpg",
-        cubemapDir + "top.jpg",
-        cubemapDir + "py.jpg",
-        cubemapDir + "ny.jpg",
-        cubemapDir + "pz.jpg"
-    };
-    cubemapTexture = loadCubemap(faces);   
-
-    // setup shader for cubemap
-    std::string vpath = shaderDir + "cubemap.vert";
-    std::string fpath = shaderDir + "cubemap.frag";
+    #if defined(__linux__) || defined(__APPLE__)
+        std::string cubemapDir = "asset/texture/skybox/";
+        std::string shaderDir = "shaders/";
+    #else
+        std::string cubemapDir = "..\\..\\src\\asset\\texture\\skybox\\";
+        std::string shaderDir = "..\\..\\src\\shaders\\";
+    #endif
     
-    cubemapShader = new shader_program_t();
-    cubemapShader->create();
-    cubemapShader->add_shader(vpath, GL_VERTEX_SHADER);
-    cubemapShader->add_shader(fpath, GL_FRAGMENT_SHADER);
-    cubemapShader->link_shader();
-
-    glGenVertexArrays(1, &cubemapVAO);
-    glGenBuffers(1, &cubemapVBO);
-    glBindVertexArray(cubemapVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, cubemapVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubemapVertices), &cubemapVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glBindVertexArray(0);
-}
+        // setup texture for cubemap
+        // Order: +X (right), -X (left), +Y (top), -Y (bottom), +Z (back), -Z (front)
+        std::vector<std::string> faces
+        {
+            cubemapDir + "px.png",
+            cubemapDir + "nx.png",
+            cubemapDir + "py.png",
+            cubemapDir + "ny.png",
+            cubemapDir + "pz.png",
+            cubemapDir + "nz.png"
+        };
+        cubemapTexture = loadCubemap(faces);   
+    
+        // setup shader for cubemap
+        std::string vpath = shaderDir + "cubemap.vert";
+        std::string fpath = shaderDir + "cubemap.frag";
+        
+        cubemapShader = new shader_program_t();
+        cubemapShader->create();
+        cubemapShader->add_shader(vpath, GL_VERTEX_SHADER);
+        cubemapShader->add_shader(fpath, GL_FRAGMENT_SHADER);
+        cubemapShader->link_shader();
+    
+        glGenVertexArrays(1, &cubemapVAO);
+        glGenBuffers(1, &cubemapVBO);
+        glBindVertexArray(cubemapVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, cubemapVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(cubemapVertices), &cubemapVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
+    }
 
 void setup(){
     // initialize shader model camera light material
@@ -376,12 +390,24 @@ void update(){
     
     // Update animation (use relative time if animation has started)
     float animationTime = animationStarted ? (currentTime - animationStartTime) : 0.0f;
-    animatedModel->updateAnimation(animationTime);
+    
+    // 計算用於動畫的時間（如果翻滾已開始，停止走路動畫）
+    float animationTimeForModel = animationTime;
+    if (cinematicDirector && animationStarted) {
+        float rollStartTime = cinematicDirector->GetRollStartTime();
+        if (rollStartTime >= 0.0f && animationTime >= rollStartTime) {
+            // 翻滾開始後，保持動畫時間在翻滾開始時（停止走路動畫）
+            animationTimeForModel = rollStartTime;
+        }
+    }
+    
+    // 使用限制後的動畫時間更新模型動畫（停止走路動畫）
+    animatedModel->updateAnimation(animationTimeForModel);
 
     // Update character and cart movement based on animation time
     if (cinematicDirector) {
         if (animationStarted) {
-            // 動畫開始後，使用動畫時間更新位置
+            // 動畫開始後，使用原始動畫時間更新位置（不限制，讓翻滾可以繼續）
             cinematicDirector->UpdateCharacterMovement(animationTime);
             cinematicDirector->UpdateCartMovement(animationTime);
             cinematicDirector->UpdateHeadRotation(animationTime);
@@ -504,18 +530,28 @@ void render(){
     }
 
     // Render cart (static model)
+    // Render cart with motion blur effect
     if (cartModel && cartModel->vertices.size() > 0) {
-        staticShader->use();
-        staticShader->set_uniform_value("model", cartMatrix);
-        staticShader->set_uniform_value("view", view);
-        staticShader->set_uniform_value("projection", projection);
+        // 启用混合模式（用于半透明残影）
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
-        // Set texture sampler (texture will be set by render function based on material)
-        staticShader->set_uniform_value("ourTexture", 0);
+        // 使用 motion blur shader
+        motionBlurShader->use();
+        motionBlurShader->set_uniform_value("model", cartMatrix);
+        motionBlurShader->set_uniform_value("view", view);
+        motionBlurShader->set_uniform_value("projection", projection);
         
-        // Render model (will handle material switching internally)
+        // 使用动画时间而不是全局时间
+        float animationTime = animationStarted ? (currentTime - animationStartTime) : 0.0f;
+        motionBlurShader->set_uniform_value("time", animationTime);
+        
+        // Render model (will handle material switching and texture binding internally)
         cartModel->render();
-        staticShader->release();
+        motionBlurShader->release();
+        
+        // 关闭混合模式
+        glDisable(GL_BLEND);
     }
 
     // Render city (static model)
@@ -621,6 +657,7 @@ int main() {
     delete cubemapShader;
     if (staticShader) delete staticShader;
     if (cinematicDirector) delete cinematicDirector;
+    if (motionBlurShader) delete motionBlurShader;
 
     delete rainShader;
     delete rainSystem;
@@ -685,8 +722,9 @@ unsigned int loadCubemap(std::vector<std::string>& faces)
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
-                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data
             );
             stbi_image_free(data);
         }

@@ -73,6 +73,9 @@ public:
     
     // 更新頭部旋轉（公開方法，供外部調用）
     void UpdateHeadRotation(float currentTime);
+    
+    // 獲取翻滾開始時間（用於停止走路動畫）
+    float GetRollStartTime() const { return m_RollStartTime; }
 
 private:
     // 參考到主程式的相機和模型
@@ -85,6 +88,7 @@ private:
     float m_GlobalTime;
     bool m_IsPlaying;
     bool m_Loop;
+    float m_RollStartTime; // 翻滾開始時間（用於停止走路動畫）
     
     // 關鍵影格序列
     std::vector<Keyframe> m_Keyframes;

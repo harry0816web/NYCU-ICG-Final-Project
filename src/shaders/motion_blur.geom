@@ -22,30 +22,43 @@ const float PI = 3.14159265359;
 
 // 根據時間重建模型矩陣（重現物體的運動）
 mat4 getModelMatrixAtTime(float t) {
-    // 重現 main.cpp 中的運動邏輯：
-    // degree += 100.0f * deltaTime;
-    // Height = 30 * sin(dogTime * 2 * PI / 6) + 50;
-
-    float degreeAtTime = t * 100.0; // 每秒旋轉100度
-    float heightAtTime = 30.0 * sin(t * 2.0 * PI / 6.0) + 50.0;
-
+    // 重現 cinematic_director.cpp 中 UpdateCartMovement 的運動邏輯
+    // 6秒前：靜止在 (0, 0, 150)
+    // 6-10秒：從 (0, 0, 150) 移動到 (0, 0, 70)
+    // 10秒後：靜止在 (0, 0, 70)
+    
+    float cartMoveStartTime = 6.0;
+    float cartMoveDuration = 4.0; // 4秒完成移動
+    vec3 startPos = vec3(0.0, 0.0, 150.0);
+    vec3 endPos = vec3(0.0, 0.0, 70.0);
+    
+    vec3 currentPos;
+    if (t < cartMoveStartTime) {
+        // 6秒前：保持初始位置
+        currentPos = startPos;
+    } else if (t > cartMoveStartTime + cartMoveDuration) {
+        // 10秒後：保持結束位置
+        currentPos = endPos;
+    } else {
+        // 6-10秒：線性插值移動
+        float progress = (t - cartMoveStartTime) / cartMoveDuration;
+        // 使用平滑函數（與 C++ 代碼一致）
+        float smoothProgress = progress * progress * (3.0 - 2.0 * progress);
+        currentPos = mix(startPos, endPos, smoothProgress);
+    }
+    
     mat4 m = mat4(1.0);
-
-    // 1. 縮放
+    
+    // 1. 縮放（10倍）
     m = mat4(
-        100.0, 0.0, 0.0, 0.0,
-        0.0, 100.0, 0.0, 0.0,
-        0.0, 0.0, 100.0, 0.0,
+        10.0, 0.0, 0.0, 0.0,
+        0.0, 10.0, 0.0, 0.0,
+        0.0, 0.0, 10.0, 0.0,
         0.0, 0.0, 0.0, 1.0
     );
-
-    // 2. 平移（Y軸高度）
-    mat4 translate = mat4(1.0);
-    translate[3] = vec4(0.0, heightAtTime, 0.0, 1.0);
-    m = translate * m;
-
-    // 3. 旋轉（繞Y軸）
-    float angleRad = radians(degreeAtTime);
+    
+    // 2. 旋轉（繞Y軸180度）
+    float angleRad = radians(180.0);
     float c = cos(angleRad);
     float s = sin(angleRad);
     mat4 rotate = mat4(
@@ -55,14 +68,19 @@ mat4 getModelMatrixAtTime(float t) {
         0.0, 0.0, 0.0, 1.0
     );
     m = rotate * m;
-
+    
+    // 3. 平移（到當前位置）
+    mat4 translate = mat4(1.0);
+    translate[3] = vec4(currentPos, 1.0);
+    m = translate * m;
+    
     return m;
 }
 
 void main() {
     // 設定殘影數量
     int layers = 5;
-    float timeLag = 0.05; // 每一層殘影的時間延遲
+    float timeLag = 0.15; // 每一層殘影的時間延遲
 
     // 對每一層殘影進行迴圈
     for(int i = 0; i < layers; i++) {
