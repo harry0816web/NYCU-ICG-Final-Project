@@ -77,10 +77,7 @@ void CinematicDirector::UpdateCameraWithTime(float currentTime) {
     // 更新全局時間（用於其他更新函數）
     m_GlobalTime = currentTime;
     
-    // 使用關鍵影格插值更新相機
-    InterpolateBetweenKeyframes(currentTime);
-    
-    // 控制角色移動：0-5秒從左前方走到斑馬線中間
+    // 先更新角色移動，確保模型矩陣是最新的
     UpdateCharacterMovement(currentTime);
     
     // 控制車子移動：第5秒開始往人的方向移動
@@ -91,14 +88,18 @@ void CinematicDirector::UpdateCameraWithTime(float currentTime) {
         UpdateHeadRotation(currentTime);
     }
     
+    // 使用關鍵影格插值更新相機（在角色移動更新之後）
+    InterpolateBetweenKeyframes(currentTime);
+    
     // 每秒輸出相機位置和lookat，用於記錄關鍵幀（使用整數秒，確保時間一致）
+    // 所有位置都是世界座標
     static float lastCameraOutputTime = -1.0f;
     if (currentTime - lastCameraOutputTime >= 1.0f || lastCameraOutputTime < 0.0f) {
         int timeInt = (int)currentTime;
         std::cout << "Camera Keyframe: Time=" << timeInt 
-                  << "s, Position=(" << std::fixed << std::setprecision(4) << m_Camera.position.x << ", " 
+                  << "s, Position (World)=(" << std::fixed << std::setprecision(4) << m_Camera.position.x << ", " 
                   << m_Camera.position.y << ", " << m_Camera.position.z 
-                  << "), LookAt=(" << m_Camera.target.x << ", " << m_Camera.target.y << ", " 
+                  << "), LookAt (World)=(" << m_Camera.target.x << ", " << m_Camera.target.y << ", " 
                   << m_Camera.target.z << ")" << std::endl;
         lastCameraOutputTime = currentTime;
     }
@@ -153,11 +154,17 @@ void CinematicDirector::InitializeKeyframes() {
     m_Keyframes.push_back(Keyframe(15.0f,
         glm::vec3(100.0f, 50.0f, 0.0f),    // 相機位置：從(100, 50, 0)開始
         glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態跟隨人物（這裡只是占位）
-        15.0f));                             // 持續到30秒（15-30秒）
+        1.0f));                             // 持續到16秒（15-16秒）
     
-    // 30秒：結束關鍵幀，相機位置移動到(0, 50, 0)，LookAt跟隨人物
-    m_Keyframes.push_back(Keyframe(30.0f,
-        glm::vec3(0.0f, 50.0f, 0.0f),    // 相機位置：移動到(0, 50, 0)
+    // 16秒：相機位置固定在(0, 50, 0)，LookAt跟隨人物
+    m_Keyframes.push_back(Keyframe(16.0f,
+        glm::vec3(0.0f, 50.0f, 0.0f),    // 相機位置：固定在(0, 50, 0)
+        glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態跟隨人物（這裡只是占位）
+        5.0f));                             // 持續到21秒（16-21秒）
+    
+    // 21秒：結束關鍵幀，相機位置保持在(0, 50, 0)，LookAt跟隨人物
+    m_Keyframes.push_back(Keyframe(21.0f,
+        glm::vec3(0.0f, 50.0f, 0.0f),    // 相機位置：保持在(0, 50, 0)
         glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態跟隨人物（這裡只是占位）
         0.0f));                             // 結束
     
@@ -172,8 +179,10 @@ void CinematicDirector::InitializeKeyframes() {
     std::cout << "    Camera: (-5, 10.3934, 70.7176) -> Target: (following car, z reversed)" << std::endl;
     std::cout << "  Keyframe 5 (9-15s): Fixed camera position" << std::endl;
     std::cout << "    Camera: (100, 50, 0) -> Target: (0, 0, 0)" << std::endl;
-    std::cout << "  Keyframe 6 (15-30s): Camera follows character" << std::endl;
+    std::cout << "  Keyframe 6 (15-16s): Camera transitions to (0, 50, 0)" << std::endl;
     std::cout << "    Camera: (100, 50, 0) -> (0, 50, 0), Target: (follows character)" << std::endl;
+    std::cout << "  Keyframe 7 (16-21s): Camera fixed at (0, 50, 0), Target: (follows character)" << std::endl;
+    std::cout << "    Camera: (0, 50, 0) -> Target: (follows character)" << std::endl;
     std::cout << "  Note: Head rotation starts at 5 seconds, Car starts moving at 6 seconds (6-15s)" << std::endl;
 }
 
@@ -193,19 +202,43 @@ void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     }
     
     // 從實際模型矩陣中提取角色和車子位置（用於相機跟隨）
-    // 角色模型矩陣：scale(0.1) * translate(pos) * rotate
-    // 所以 m_CharacterModel[3] 包含 pos * 0.1，需要除以 0.1
+    // 角色模型矩陣構建順序：scale(0.1) * translate(pos) * rotate
+    // 在glm中，矩陣乘法是從右到左的，所以實際執行順序是：先rotate，再translate，再scale
+    // 最終矩陣 = S * T * R，其中：
+    //   S = scale(0.1) = [0.1, 0, 0, 0; 0, 0.1, 0, 0; 0, 0, 0.1, 0; 0, 0, 0, 1]
+    //   T = translate(pos) = [1, 0, 0, pos.x; 0, 1, 0, pos.y; 0, 0, 1, pos.z; 0, 0, 0, 1]
+    //   R = rotate(...)，第四列是 [0, 0, 0, 1]（旋轉不影響平移部分）
+    // 所以 m_CharacterModel[3] = S * T * R * [0,0,0,1] = S * T * [0,0,0,1] = [pos.x*0.1, pos.y*0.1, pos.z*0.1, 1]
+    // 因此，世界座標位置 = m_CharacterModel[3].xyz / 0.1
     glm::vec3 characterPos = glm::vec3(m_CharacterModel[3]) / 0.1f;
     
     // 車子模型矩陣：translate(pos) * rotate * scale(10)
     // 所以 m_CartModel[3] 包含 pos，不需要除以 10
     glm::vec3 cartPos = glm::vec3(m_CartModel[3]);
     
-    // 如果超過最後一個關鍵影格（30秒後），固定在第9秒的位置和LookAt(0,0,0)
+    // 如果超過最後一個關鍵影格（21秒後），固定在第16秒的位置和LookAt追蹤人物
     if (currentTime >= m_Keyframes.back().time) {
-        // 固定在第9秒的相機位置和LookAt
-        glm::vec3 cameraPos = glm::vec3(100.0f, 50.0f, 0.0f); // 第9秒的位置
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); // LookAt固定在(0,0,0)
+        // 重新提取人物位置（確保是最新的世界座標）
+        glm::vec3 actualCharacterPos = glm::vec3(m_CharacterModel[3]) / 0.1f;
+        // 固定在(0, 50, 0)的位置，LookAt追蹤人物 - 所有位置都是世界座標
+        glm::vec3 cameraPos = glm::vec3(0.0f, 50.0f, 0.0f); // 第16秒的位置 - 世界座標
+        // LookAt追蹤人物位置，Y座標根據時間調整：
+        // 20秒前：Y座標固定為50（水平看向人物）
+        // 20-21秒：Y座標從50平滑過渡到-150
+        // 21秒後：Y座標固定為-150（更向下看向人物，確保能看到地面上的人物）
+        float lookAtY;
+        if (currentTime < 20.0f) {
+            lookAtY = 50.0f; // 20秒前固定為50
+        } else if (currentTime < 21.0f) {
+            // 20-21秒：從50平滑過渡到-150
+            float transitionProgress = (currentTime - 20.0f) / 1.0f; // 0.0 到 1.0
+            transitionProgress = glm::clamp(transitionProgress, 0.0f, 1.0f);
+            float smoothProgress = SmoothStep(transitionProgress); // 使用平滑函數
+            lookAtY = glm::mix(50.0f, -200.0f, smoothProgress);
+        } else {
+            lookAtY = -200.0f; // 21秒後固定為-200
+        }
+        glm::vec3 cameraTarget = glm::vec3(actualCharacterPos.x, lookAtY, actualCharacterPos.z);
         UpdateCamera(cameraPos, cameraTarget);
         return;
     }
@@ -227,8 +260,80 @@ void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     glm::vec3 cameraPos = glm::mix(keyframe1.cameraPosition, keyframe2.cameraPosition, smoothT);
     glm::vec3 cameraTarget = glm::mix(keyframe1.cameraTarget, keyframe2.cameraTarget, smoothT);
     
-    // 9秒後：固定在第9秒的位置和LookAt(0,0,0)，不追蹤人物
-    if (currentTime >= 9.0f) {
+    // 16-21秒：相機位置固定在(0, 50, 0)，LookAt追蹤人物
+    if (currentTime >= 16.0f && currentTime <= 21.0f) {
+        // 重新提取人物位置（確保是最新的世界座標）
+        // 模型矩陣構建順序：scale(0.1) * translate(pos) * rotate
+        // 世界座標位置 = m_CharacterModel[3].xyz / 0.1
+        glm::vec3 actualCharacterPos = glm::vec3(m_CharacterModel[3]) / 0.1f;
+        
+        cameraPos = glm::vec3(0.0f, 50.0f, 0.0f); // 固定在(0, 50, 0) - 世界座標
+        // LookAt追蹤人物位置，Y座標根據時間調整：
+        // 20秒前：Y座標固定為50（水平看向人物）
+        // 20-21秒：Y座標從50平滑過渡到-150
+        // 21秒後：Y座標固定為-150（更向下看向人物，確保能看到地面上的人物）
+        float lookAtY;
+        if (currentTime < 20.0f) {
+            lookAtY = 50.0f; // 20秒前固定為50
+        } else if (currentTime < 21.0f) {
+            // 20-21秒：從50平滑過渡到-150
+            float transitionProgress = (currentTime - 20.0f) / 1.0f; // 0.0 到 1.0
+            transitionProgress = glm::clamp(transitionProgress, 0.0f, 1.0f);
+            float smoothProgress = SmoothStep(transitionProgress); // 使用平滑函數
+            lookAtY = glm::mix(50.0f, -150.0f, smoothProgress);
+        } else {
+            lookAtY = -150.0f; // 21秒後固定為-150
+        }
+        cameraTarget = glm::vec3(actualCharacterPos.x, lookAtY, actualCharacterPos.z);
+        
+        // 調試輸出：檢查人物位置和模型矩陣（所有位置都是世界座標）
+        static float lastDebugTime = -1.0f;
+        if (currentTime - lastDebugTime >= 1.0f || lastDebugTime < 0.0f) {
+            glm::vec3 rawModelPos = glm::vec3(m_CharacterModel[3]);
+            std::cout << "DEBUG 16-21s (World Coordinates): " << std::endl;
+            std::cout << "  Raw Model[3]=(" << rawModelPos.x << ", " << rawModelPos.y << ", " << rawModelPos.z << ")" << std::endl;
+            std::cout << "  Character World Pos=(" << actualCharacterPos.x << ", " 
+                      << actualCharacterPos.y << ", " << actualCharacterPos.z << ")" << std::endl;
+            std::cout << "  Camera World Pos=(" << cameraPos.x << ", " 
+                      << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
+            std::string lookAtYDesc;
+            if (currentTime < 20.0f) {
+                lookAtYDesc = "50";
+            } else if (currentTime < 21.0f) {
+                lookAtYDesc = "50->-150 (transitioning)";
+            } else {
+                lookAtYDesc = "-150";
+            }
+            std::cout << "  LookAt World Pos (Y = " << lookAtYDesc << ")=(" << cameraTarget.x << ", " 
+                      << cameraTarget.y << ", " << cameraTarget.z << ")" << std::endl;
+            lastDebugTime = currentTime;
+        }
+    }
+    // 15-16秒：相機位置從(100, 50, 0)過渡到(0, 50, 0)，LookAt追蹤人物
+    else if (currentTime >= 15.0f && currentTime < 16.0f) {
+        // 重新提取人物位置（確保是最新的世界座標）
+        glm::vec3 actualCharacterPos = glm::vec3(m_CharacterModel[3]) / 0.1f;
+        // 相機位置使用插值（從(100, 50, 0)到(0, 50, 0)）- 世界座標
+        // LookAt追蹤人物位置，Y座標根據時間調整：
+        // 20秒前：Y座標固定為50（水平看向人物）
+        // 20-21秒：Y座標從50平滑過渡到-150
+        // 21秒後：Y座標固定為-150（更向下看向人物，確保能看到地面上的人物）
+        float lookAtY;
+        if (currentTime < 20.0f) {
+            lookAtY = 50.0f; // 20秒前固定為50
+        } else if (currentTime < 21.0f) {
+            // 20-21秒：從50平滑過渡到-150
+            float transitionProgress = (currentTime - 20.0f) / 1.0f; // 0.0 到 1.0
+            transitionProgress = glm::clamp(transitionProgress, 0.0f, 1.0f);
+            float smoothProgress = SmoothStep(transitionProgress); // 使用平滑函數
+            lookAtY = glm::mix(50.0f, -150.0f, smoothProgress);
+        } else {
+            lookAtY = -150.0f; // 21秒後固定為-150
+        }
+        cameraTarget = glm::vec3(actualCharacterPos.x, lookAtY, actualCharacterPos.z);
+    }
+    // 9-15秒：固定在第9秒的位置和LookAt(0,0,0)，不追蹤人物
+    else if (currentTime >= 9.0f && currentTime < 15.0f) {
         // 固定在第9秒的相機位置和LookAt
         cameraPos = glm::vec3(100.0f, 50.0f, 0.0f); // 第9秒的位置
         cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); // LookAt固定在(0,0,0)
@@ -588,7 +693,8 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
     float walkDuration = 5.0f;
     
     // 碰撞檢測：基於車子和人的距離，而不是固定時間
-    float flyDuration = 5.0f; // 飛行持續5秒
+    // 飛行從碰撞開始，一直持續到第20秒才落地
+    float flyEndTime = 20.0f; // 飛行結束時間（固定在第20秒）
     float rollDuration = 5.0f; // 翻滾持續5秒
     
     // 保持原來的朝向（-90度，朝向+X方向，右邊）
@@ -602,7 +708,7 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
     // 飛行目標位置：往 -z +y 方向飛出去，飛得更遠
     // 從碰撞點往 -z 方向移動，Z軸移動量是原來的三倍
     float flyDistanceZ = 2400.0f; // Z方向飛行距離（往 -z，從800增加到2400，變成三倍）
-    glm::vec3 flyEndPos = glm::vec3(m_CollisionPosition.x, m_CollisionPosition.y, m_CollisionPosition.z - flyDistanceZ); // 最終位置：z減少2400單位
+    // flyEndPos 將在飛行邏輯中根據實際碰撞位置計算
     
     if (currentTime < walkStartTime) {
         // 0秒前：保持在初始位置
@@ -635,10 +741,11 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
     static float lastPositionPrintTime = -1.0f;
     if (currentTime - lastPositionPrintTime >= 1.0f || lastPositionPrintTime < 0.0f) {
         int timeInt = (int)currentTime;
-        std::cout << "Time=" << timeInt << "s: Character Position=(" 
+        // 輸出世界座標位置
+        std::cout << "Time=" << timeInt << "s: Character World Position=(" 
                   << std::fixed << std::setprecision(4) << characterPos.x << ", " 
                   << characterPos.y << ", " << characterPos.z 
-                  << "), Cart Position=(" << cartPos.x << ", " << cartPos.y << ", " << cartPos.z << ")" << std::endl;
+                  << "), Cart World Position=(" << cartPos.x << ", " << cartPos.y << ", " << cartPos.z << ")" << std::endl;
         lastPositionPrintTime = currentTime;
     }
     
@@ -647,13 +754,13 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
     float dz = cartPos.z - characterPos.z;
     float distance = sqrt(dx * dx + dz * dz);
     
-    // 碰撞檢測：要求X軸距離很小，且總距離大於等於閾值（425）
+    // 碰撞檢測：要求X軸距離很小，且總距離大於等於閾值（450）
     float xDistance = abs(dx);
     float zDistance = abs(dz);
     
-    // 碰撞條件：X軸距離很小（< 10），且總距離大於等於425
-    // 當距離大於等於425時觸發碰撞（視覺上已經重疊）
-    float collisionDistance = 425.0f;
+    // 碰撞條件：X軸距離很小（< 10），且總距離大於等於450
+    // 當距離大於等於450時觸發碰撞（避免破圖，提前觸發）
+    float collisionDistance = 410.0f;
     bool collisionByX = (xDistance < 10.0f) && (distance >= collisionDistance);
     bool collisionByDistance = (distance >= collisionDistance);
     bool distanceCondition = collisionByX || collisionByDistance;
@@ -701,17 +808,25 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
     if (collisionDetected) {
         m_CollisionTime = currentTime;
         m_CollisionPosition = characterPos; // 記錄碰撞時的位置
-        // 計算翻滾開始時間（飛行結束時）
-        m_RollStartTime = currentTime + flyDuration;
+        // 計算翻滾開始時間（飛行結束時，固定在第20秒）
+        m_RollStartTime = flyEndTime; // 翻滾開始時間固定在第20秒
+        // 計算飛行持續時間（從碰撞時間到第20秒）
+        float flyDuration = flyEndTime - m_CollisionTime;
         // 輸出碰撞檢測信息（用於調試）
-        std::cout << "COLLISION DETECTED! Distance: " << distance << ", Time: " << currentTime << "s, Character Position: (" 
-                  << m_CollisionPosition.x << ", " << m_CollisionPosition.y << ", " << m_CollisionPosition.z << "), Cart Position: ("
-                  << cartPos.x << ", " << cartPos.y << ", " << cartPos.z << "), Roll Start Time: " << m_RollStartTime << "s" << std::endl;
+        // 輸出世界座標位置
+        std::cout << "COLLISION DETECTED! Distance: " << distance << ", Time: " << currentTime << "s, Character World Position: (" 
+                  << m_CollisionPosition.x << ", " << m_CollisionPosition.y << ", " << m_CollisionPosition.z << "), Cart World Position: ("
+                  << cartPos.x << ", " << cartPos.y << ", " << cartPos.z << "), Fly Duration: " << flyDuration 
+                  << "s, Roll Start Time: " << m_RollStartTime << "s" << std::endl;
     }
     
     // 如果已發生碰撞，開始飛行
     if (m_CollisionTime >= 0.0f && currentTime >= m_CollisionTime) {
-        float flyEndTime = m_CollisionTime + flyDuration;
+        // 計算飛行持續時間（從碰撞時間到第20秒）
+        float flyDuration = flyEndTime - m_CollisionTime;
+        
+        // 計算飛行目標位置（從碰撞點往 -z 方向移動）- 在if塊外定義，讓翻滾邏輯也能使用
+        glm::vec3 flyEndPos = glm::vec3(m_CollisionPosition.x, m_CollisionPosition.y, m_CollisionPosition.z - flyDistanceZ);
         
         if (currentTime < flyEndTime) {
         // 被撞後飛行（往 -z +y 方向）
@@ -845,9 +960,9 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
         // }
         return;
         } else {
-            // 飛行結束後：落地並翻滾
+            // 飛行結束後：落地並翻滾（第20秒開始）
             // Y軸旋轉-90度已經在飛行過程中完成
-            float rollStartTime = flyEndTime; // 翻滾開始時間（飛行結束時，Y軸旋轉已完成）
+            float rollStartTime = flyEndTime; // 翻滾開始時間（固定在第20秒，飛行結束時，Y軸旋轉已完成）
             float rollEndTime = rollStartTime + rollDuration; // 翻滾結束時間
             
             // 飛行結束時的旋轉（保持飛行pose）

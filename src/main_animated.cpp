@@ -919,9 +919,9 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         if (!animationStarted) {
             animationStarted = true;
             animationStartTime = currentTime;
-            // if (cinematicDirector) {
-            //     cinematicDirector->Start(); // 啟動cinematic director
-            // }
+            if (cinematicDirector) {
+                cinematicDirector->Start(); // 啟動cinematic director
+            }
             std::cout << "Animation started! (Press C again to restart)" << std::endl;
         } else {
             // 重新开始动画
