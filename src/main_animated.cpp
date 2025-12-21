@@ -199,19 +199,19 @@ void model_setup(){
     cartMatrix = glm::rotate(cartMatrix, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // 旋轉180度，讓車頭朝向螢幕裡面（-Z方向）
     cartMatrix = glm::scale(cartMatrix, glm::vec3(10.0f, 10.0f, 10.0f)); // Scale to appropriate size
 
-    // // Load city model - COMMENTED OUT
-    // #if defined(__linux__) || defined(__APPLE__)
-    // std::string city_file = "asset/obj/city.obj";
-    // #else
-    // std::string city_file = "..\\..\\src\\asset\\obj\\city.obj";
-    // #endif
+    // Load city model - COMMENTED OUT
+    #if defined(__linux__) || defined(__APPLE__)
+    std::string city_file = "asset/obj/city.obj";
+    #else
+    std::string city_file = "..\\..\\src\\asset\\obj\\city.obj";
+    #endif
 
-    // cityModel = new StaticModel(city_file);
+    cityModel = new StaticModel(city_file);
 
-    // // Set city position and scale
-    // cityMatrix = glm::mat4(1.0f);
-    // cityMatrix = glm::translate(cityMatrix, glm::vec3(0.0f, 0.0f, 0.0f)); // Position at origin
-    // cityMatrix = glm::scale(cityMatrix, glm::vec3(5.0f, 5.0f, 5.0f)); // Keep original scale
+    // Set city position and scale
+    cityMatrix = glm::mat4(1.0f);
+    cityMatrix = glm::translate(cityMatrix, glm::vec3(0.0f, 0.0f, 0.0f)); // Position at origin
+    cityMatrix = glm::scale(cityMatrix, glm::vec3(5.0f, 5.0f, 5.0f)); // Keep original scale
 }
 
 void updateCamera(){

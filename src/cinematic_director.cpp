@@ -162,10 +162,22 @@ void CinematicDirector::InitializeKeyframes() {
         glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態跟隨人物（這裡只是占位）
         5.0f));                             // 持續到21秒（16-21秒）
     
-    // 21秒：結束關鍵幀，相機位置保持在(0, 50, 0)，LookAt跟隨人物
+    // 21秒：相機位置保持在(0, 50, 0)，LookAt跟隨人物
     m_Keyframes.push_back(Keyframe(21.0f,
         glm::vec3(0.0f, 50.0f, 0.0f),    // 相機位置：保持在(0, 50, 0)
         glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態跟隨人物（這裡只是占位）
+        4.0f));                             // 持續到25秒（21-25秒）
+    
+    // 25秒：開始過渡，LookAt的Z座標開始變成負向（拍車子）
+    m_Keyframes.push_back(Keyframe(25.0f,
+        glm::vec3(0.0f, 50.0f, 0.0f),    // 相機位置：保持在(0, 50, 0)
+        glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態過渡到負向Z（拍車子）
+        5.0f));                             // 持續到30秒（25-30秒）
+    
+    // 30秒：結束關鍵幀，LookAt的Z座標完全負向（拍車子）
+    m_Keyframes.push_back(Keyframe(30.0f,
+        glm::vec3(0.0f, 50.0f, 0.0f),    // 相機位置：保持在(0, 50, 0)
+        glm::vec3(0.0f, 0.0f, 0.0f),    // LookAt: 將在插值邏輯中動態指向車子（負向Z）
         0.0f));                             // 結束
     
     std::cout << "Cinematic Director: Initialized " << m_Keyframes.size() << " keyframes" << std::endl;
@@ -183,6 +195,10 @@ void CinematicDirector::InitializeKeyframes() {
     std::cout << "    Camera: (100, 50, 0) -> (0, 50, 0), Target: (follows character)" << std::endl;
     std::cout << "  Keyframe 7 (16-21s): Camera fixed at (0, 50, 0), Target: (follows character)" << std::endl;
     std::cout << "    Camera: (0, 50, 0) -> Target: (follows character)" << std::endl;
+    std::cout << "  Keyframe 8 (21-25s): Camera fixed at (0, 50, 0), Target: (follows character)" << std::endl;
+    std::cout << "    Camera: (0, 50, 0) -> Target: (follows character)" << std::endl;
+    std::cout << "  Keyframe 9 (25-30s): Camera fixed at (0, 50, 0), Target: (transitions to car, negative Z)" << std::endl;
+    std::cout << "    Camera: (0, 50, 0) -> Target: (transitions from character to car)" << std::endl;
     std::cout << "  Note: Head rotation starts at 5 seconds, Car starts moving at 6 seconds (6-15s)" << std::endl;
 }
 
@@ -216,29 +232,14 @@ void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     // 所以 m_CartModel[3] 包含 pos，不需要除以 10
     glm::vec3 cartPos = glm::vec3(m_CartModel[3]);
     
-    // 如果超過最後一個關鍵影格（21秒後），固定在第16秒的位置和LookAt追蹤人物
+    // 如果超過最後一個關鍵影格（30秒後），固定在第16秒的位置和LookAt使用車子的世界座標
     if (currentTime >= m_Keyframes.back().time) {
-        // 重新提取人物位置（確保是最新的世界座標）
-        glm::vec3 actualCharacterPos = glm::vec3(m_CharacterModel[3]) / 0.1f;
-        // 固定在(0, 50, 0)的位置，LookAt追蹤人物 - 所有位置都是世界座標
+        // 重新提取車子位置（確保是最新的世界座標）
+        glm::vec3 actualCartPos = glm::vec3(m_CartModel[3]);
+        // 固定在(0, 50, 0)的位置，LookAt使用車子的世界座標 - 所有位置都是世界座標
         glm::vec3 cameraPos = glm::vec3(0.0f, 50.0f, 0.0f); // 第16秒的位置 - 世界座標
-        // LookAt追蹤人物位置，Y座標根據時間調整：
-        // 20秒前：Y座標固定為50（水平看向人物）
-        // 20-21秒：Y座標從50平滑過渡到-150
-        // 21秒後：Y座標固定為-150（更向下看向人物，確保能看到地面上的人物）
-        float lookAtY;
-        if (currentTime < 20.0f) {
-            lookAtY = 50.0f; // 20秒前固定為50
-        } else if (currentTime < 21.0f) {
-            // 20-21秒：從50平滑過渡到-150
-            float transitionProgress = (currentTime - 20.0f) / 1.0f; // 0.0 到 1.0
-            transitionProgress = glm::clamp(transitionProgress, 0.0f, 1.0f);
-            float smoothProgress = SmoothStep(transitionProgress); // 使用平滑函數
-            lookAtY = glm::mix(50.0f, -200.0f, smoothProgress);
-        } else {
-            lookAtY = -200.0f; // 21秒後固定為-200
-        }
-        glm::vec3 cameraTarget = glm::vec3(actualCharacterPos.x, lookAtY, actualCharacterPos.z);
+        // LookAt直接使用車子的世界座標
+        glm::vec3 cameraTarget = actualCartPos;
         UpdateCamera(cameraPos, cameraTarget);
         return;
     }
@@ -260,8 +261,29 @@ void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     glm::vec3 cameraPos = glm::mix(keyframe1.cameraPosition, keyframe2.cameraPosition, smoothT);
     glm::vec3 cameraTarget = glm::mix(keyframe1.cameraTarget, keyframe2.cameraTarget, smoothT);
     
+    // 25秒後：相機位置固定在(0, 50, 0)，LookAt使用車子的世界座標
+    if (currentTime >= 27.0f) {
+        // 重新提取車子位置（確保是最新的世界座標）
+        glm::vec3 actualCartPos = glm::vec3(m_CartModel[3]);
+        
+        cameraPos = glm::vec3(0.0f, 50.0f, -100.0f); // 固定在(0, 50, 0) - 世界座標
+        
+        // LookAt直接使用車子的世界座標
+        cameraTarget = actualCartPos;
+    }
+    // 21-25秒：相機位置固定在(0, 50, 0)，LookAt追蹤人物
+    else if (currentTime >= 21.0f && currentTime < 27.0f) {
+        // 重新提取人物位置（確保是最新的世界座標）
+        glm::vec3 actualCharacterPos = glm::vec3(m_CharacterModel[3]) / 0.1f;
+        
+        cameraPos = glm::vec3(0.0f, 50.0f, 0.0f); // 固定在(0, 50, 0) - 世界座標
+        
+        // LookAt追蹤人物位置，Y座標固定為-300（21秒後）
+        float lookAtY = -300.0f;
+        cameraTarget = glm::vec3(actualCharacterPos.x, lookAtY, actualCharacterPos.z);
+    }
     // 16-21秒：相機位置固定在(0, 50, 0)，LookAt追蹤人物
-    if (currentTime >= 16.0f && currentTime <= 21.0f) {
+    else if (currentTime >= 16.0f && currentTime < 21.0f) {
         // 重新提取人物位置（確保是最新的世界座標）
         // 模型矩陣構建順序：scale(0.1) * translate(pos) * rotate
         // 世界座標位置 = m_CharacterModel[3].xyz / 0.1
@@ -1095,7 +1117,7 @@ void CinematicDirector::UpdateCharacterMovement(float currentTime) {
 void CinematicDirector::UpdateCartMovement(float currentTime) {
     // 6-15秒：車子往-Z方向開（延長3秒，讓速度變慢，可以明顯看到motion blur）
     float cartMoveStartTime = 6.0f;
-    float cartMoveDuration = 9.0f; // 9秒完成移動（從6秒增加到9秒，讓速度變慢）
+    float cartMoveDuration = 5.0f; // 9秒完成移動（從6秒增加到9秒，讓速度變慢）
     
     // 起始位置：使用初始位置（與 main_animated.cpp 中的初始位置一致）
     glm::vec3 startPos = glm::vec3(0.0f, 0.0f, 150.0f);
