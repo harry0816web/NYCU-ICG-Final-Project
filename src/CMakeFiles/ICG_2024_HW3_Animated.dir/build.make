@@ -170,6 +170,34 @@ src/CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.s"
 	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/cinematic_director.cpp -o CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.s
 
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o: src/CMakeFiles/ICG_2024_HW3_Animated.dir/flags.make
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o: src/energy_beam.cpp
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o: src/CMakeFiles/ICG_2024_HW3_Animated.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o"
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o -MF CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o.d -o CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o -c /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/energy_beam.cpp
+
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.i"
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/energy_beam.cpp > CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.i
+
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.s"
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/energy_beam.cpp -o CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.s
+
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o: src/CMakeFiles/ICG_2024_HW3_Animated.dir/flags.make
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o: src/shockwave_rings.cpp
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o: src/CMakeFiles/ICG_2024_HW3_Animated.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o"
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o -MF CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o.d -o CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o -c /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/shockwave_rings.cpp
+
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.i"
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/shockwave_rings.cpp > CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.i
+
+src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.s"
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/shockwave_rings.cpp -o CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.s
+
 # Object files for target ICG_2024_HW3_Animated
 ICG_2024_HW3_Animated_OBJECTS = \
 "CMakeFiles/ICG_2024_HW3_Animated.dir/main_animated.cpp.o" \
@@ -178,7 +206,9 @@ ICG_2024_HW3_Animated_OBJECTS = \
 "CMakeFiles/ICG_2024_HW3_Animated.dir/animated_model.cpp.o" \
 "CMakeFiles/ICG_2024_HW3_Animated.dir/static_model.cpp.o" \
 "CMakeFiles/ICG_2024_HW3_Animated.dir/rain.cpp.o" \
-"CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.o"
+"CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.o" \
+"CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o" \
+"CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o"
 
 # External object files for target ICG_2024_HW3_Animated
 ICG_2024_HW3_Animated_EXTERNAL_OBJECTS =
@@ -190,6 +220,8 @@ src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/animated_mod
 src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/static_model.cpp.o
 src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/rain.cpp.o
 src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.o
+src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o
+src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o
 src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make
 src/ICG_2024_HW3_Animated: extern/glfw/src/libglfw3.a
 src/ICG_2024_HW3_Animated: extern/glm/glm/libglm.a
@@ -197,7 +229,7 @@ src/ICG_2024_HW3_Animated: extern/glad/libglad.a
 src/ICG_2024_HW3_Animated: extern/assimp/lib/libassimp.a
 src/ICG_2024_HW3_Animated: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libz.tbd
 src/ICG_2024_HW3_Animated: src/CMakeFiles/ICG_2024_HW3_Animated.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX executable ICG_2024_HW3_Animated"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX executable ICG_2024_HW3_Animated"
 	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ICG_2024_HW3_Animated.dir/link.txt --verbose=$(VERBOSE)
 	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /opt/homebrew/bin/cmake -E copy_directory /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/shaders /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/shaders
 	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src && /opt/homebrew/bin/cmake -E copy_directory /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/asset /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/asset

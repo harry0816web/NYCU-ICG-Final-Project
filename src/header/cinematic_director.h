@@ -81,6 +81,11 @@ public:
     float GetRollStartTime() const { return m_RollStartTime; }
     
     bool IsRollFinished() const { return m_RollFinished; }
+    
+    // 獲取碰撞時間和位置（用於觸發shockwave和energy_beam）
+    float GetCollisionTime() const { return m_CollisionTime; }
+    glm::vec3 GetCollisionPosition() const { return m_CollisionPosition; }
+    bool HasCollisionOccurred() const { return m_CollisionTime >= 0.0f; }
 
 private:
     // 參考到主程式的相機和模型
@@ -94,6 +99,10 @@ private:
     bool m_IsPlaying;
     bool m_Loop;
     float m_RollStartTime; // 翻滾開始時間（用於停止走路動畫）
+    
+    // 碰撞信息
+    float m_CollisionTime; // 碰撞發生的時間，-1表示尚未發生碰撞
+    glm::vec3 m_CollisionPosition; // 碰撞發生時的位置
     
     // 關鍵影格序列
     std::vector<Keyframe> m_Keyframes;

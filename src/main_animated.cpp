@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
+
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -18,11 +20,73 @@
 #include "header/rain.h"
 #include "header/cinematic_director.h"
 #include "header/camera.h"
+#include "header/shockwave_rings.h"
+#include "header/energy_beam.h"
 
 void framebufferSizeCallback(GLFWwindow *window, int width, int height);
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
 void processInput(GLFWwindow *window);
 unsigned int loadCubemap(std::vector<std::string> &mFileName);
+
+// energy beam system
+EnergyBeamSystem* energyBeamSystem = nullptr;
+shader_program_t* energyBeamShader = nullptr;
+bool enableEnergyBeam = false;
+float energyBeamStartTime = -1.0f;
+
+// shockwave rings system
+ShockwaveRingSystem* shockwaveSystem = nullptr;
+shader_program_t* shockwaveShader = nullptr;
+bool enableShockwave = false;
+float shockwaveStartTime = -1.0f;
+
+void energy_beam_setup(){
+    #if defined(__linux__) || defined(__APPLE__)
+        std::string shaderDir = "shaders/";
+    #else
+        std::string shaderDir = "..\\..\\src\\shaders\\";
+    #endif
+
+    std::string vpath = shaderDir + "energy_beam.vert";
+    std::string gpath = shaderDir + "energy_beam.geom";
+    std::string fpath = shaderDir + "energy_beam.frag";
+
+    energyBeamShader = new shader_program_t();
+    energyBeamShader->create();
+    energyBeamShader->add_shader(vpath, GL_VERTEX_SHADER);
+    energyBeamShader->add_shader(gpath, GL_GEOMETRY_SHADER);
+    energyBeamShader->add_shader(fpath, GL_FRAGMENT_SHADER);
+    energyBeamShader->link_shader();
+
+    energyBeamSystem = new EnergyBeamSystem(150);
+    energyBeamSystem->setup();
+
+    std::cout << "Energy beam system setup complete" << std::endl;
+}
+
+void shockwave_setup(){
+    #if defined(__linux__) || defined(__APPLE__)
+        std::string shaderDir = "shaders/";
+    #else
+        std::string shaderDir = "..\\..\\src\\shaders\\";
+    #endif
+
+    std::string vpath = shaderDir + "shockwave.vert";
+    std::string gpath = shaderDir + "shockwave.geom";
+    std::string fpath = shaderDir + "shockwave.frag";
+
+    shockwaveShader = new shader_program_t();
+    shockwaveShader->create();
+    shockwaveShader->add_shader(vpath, GL_VERTEX_SHADER);
+    shockwaveShader->add_shader(gpath, GL_GEOMETRY_SHADER);
+    shockwaveShader->add_shader(fpath, GL_FRAGMENT_SHADER);
+    shockwaveShader->link_shader();
+
+    shockwaveSystem = new ShockwaveRingSystem(20);
+    shockwaveSystem->setup();
+
+    std::cout << "Shockwave ring system setup complete" << std::endl;
+}
 
 struct material_t{
     glm::vec3 ambient;
@@ -53,6 +117,7 @@ shader_program_t* cubemapShader;
 shader_program_t* rainShader;
 shader_program_t* motionBlurShader = nullptr;
 shader_program_t* explodeShader = nullptr;
+shader_program_t* burningShader = nullptr;
 
 // explode effect
 bool enableExplode = false;
@@ -321,6 +386,17 @@ void shader_setup(){
     explodeShader->add_shader(explodeGeomPath, GL_GEOMETRY_SHADER);
     explodeShader->add_shader(explodeFragPath, GL_FRAGMENT_SHADER);
     explodeShader->link_shader();
+
+    // Create burning shader
+    burningShader = new shader_program_t();
+    burningShader->create();
+    std::string burningVertPath = shaderDir + "burning.vert";
+    std::string burningGeomPath = shaderDir + "burning.geom";
+    std::string burningFragPath = shaderDir + "burning.frag";
+    burningShader->add_shader(burningVertPath, GL_VERTEX_SHADER);
+    burningShader->add_shader(burningGeomPath, GL_GEOMETRY_SHADER);
+    burningShader->add_shader(burningFragPath, GL_FRAGMENT_SHADER);
+    burningShader->link_shader();
 }
 
 void cubemap_setup(){
@@ -404,17 +480,7 @@ void update(){
     deltaTime = currentTime - lastFrame;
     lastFrame = currentTime;
     
-    // 每秒輸出相機位置和lookat，用於記錄關鍵幀（一開始就輸出，不用按C）
-    static float lastCameraOutputTime = -1.0f;
-    if (currentTime - lastCameraOutputTime >= 1.0f || lastCameraOutputTime < 0.0f) {
-        // 計算實際的lookat點：在orbit系統中，lookat點 = position + front * radius = target
-        // 但為了確保正確，我們直接計算：position + front * radius
-        glm::vec3 actualLookAt = camera.position + camera.front * camera.radius;
-        std::cout << "Camera Keyframe: Time=" << (int)currentTime << "s, Position=(" 
-                  << camera.position.x << ", " << camera.position.y << ", " << camera.position.z 
-                  << "), LookAt=(" << actualLookAt.x << ", " << actualLookAt.y << ", " << actualLookAt.z << ")" << std::endl;
-        lastCameraOutputTime = currentTime;
-    }
+    // 移除重複的相機輸出（由cinematic_director.cpp統一輸出）
     
     // Update animation (use relative time if animation has started)
     float animationTime = animationStarted ? (currentTime - animationStartTime) : 0.0f;
@@ -440,11 +506,48 @@ void update(){
             cinematicDirector->UpdateCartMovement(animationTime);
             cinematicDirector->UpdateHeadRotation(animationTime);
             cinematicDirector->UpdateCameraWithTime(animationTime); // 更新相機
-            // 檢查是否滾動結束並觸發爆炸
+            
+            // 檢查是否發生碰撞並觸發shockwave和energy_beam
+            // 使用靜態變量追蹤是否已經觸發過，避免重複觸發
+            static float lastCollisionCheckTime = -1.0f;
+            float collisionTime = cinematicDirector->GetCollisionTime();
+            
+            // 如果碰撞時間改變了（新發生碰撞），觸發特效
+            if (collisionTime >= 0.0f && collisionTime != lastCollisionCheckTime) {
+                enableShockwave = true;
+                enableEnergyBeam = true;
+                shockwaveStartTime = currentTime;
+                energyBeamStartTime = currentTime;
+                
+                // 設置shockwave和energy_beam的中心點為車子中心
+                // 車子模型矩陣：translate(pos) * rotate * scale(10)，所以cartMatrix[3]直接包含位置
+                glm::vec3 cartCenter = glm::vec3(cartMatrix[3]);
+                if (shockwaveSystem) {
+                    shockwaveSystem->setCenter(cartCenter);
+                    std::cout << "Shockwave system center set to cart center: (" << cartCenter.x << ", " << cartCenter.y << ", " << cartCenter.z << ")" << std::endl;
+                } else {
+                    std::cout << "WARNING: shockwaveSystem is null!" << std::endl;
+                }
+                if (energyBeamSystem) {
+                    energyBeamSystem->setCenter(cartCenter);
+                    std::cout << "Energy beam system center set to cart center: (" << cartCenter.x << ", " << cartCenter.y << ", " << cartCenter.z << ")" << std::endl;
+                } else {
+                    std::cout << "WARNING: energyBeamSystem is null!" << std::endl;
+                }
+                
+                lastCollisionCheckTime = collisionTime;
+                std::cout << "Collision detected! Time: " << collisionTime << "s, Shockwave and Energy Beam effects started at cart center: (" 
+                          << cartCenter.x << ", " << cartCenter.y << ", " << cartCenter.z << ")" << std::endl;
+            }
+            
+            // 檢查是否滾動結束並觸發爆炸和burning特效
             if (cinematicDirector->IsRollFinished() && !enableExplode) {
                 enableExplode = true;
                 explodeStartTime = currentTime;
-                std::cout << "Explode effect started!" << std::endl;
+                std::cout << "Explode effect started! Burning effect will also be triggered at time: " << currentTime << "s" << std::endl;
+                if (!burningShader) {
+                    std::cout << "WARNING: burningShader is null! Burning effect may not render." << std::endl;
+                }
             }
         } else {
             // 動畫未開始時，確保使用初始位置（與 model_setup 中設置的一致）
@@ -479,6 +582,65 @@ void render(){
 
         rainSystem->render(currentTime);
         rainShader->release();
+
+        glLineWidth(1.0f);
+        glDisable(GL_BLEND);
+        glEnable(GL_CULL_FACE);
+    }
+
+    // Render energy beams from cart center
+    if (enableEnergyBeam && energyBeamSystem && energyBeamShader) {
+        glDisable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glLineWidth(3.5f);
+
+        // 使用車子中心作為中心點
+        // 車子模型矩陣：translate(pos) * rotate * scale(10)，所以cartMatrix[3]直接包含位置
+        glm::vec3 cartCenter = glm::vec3(cartMatrix[3]);
+        cartCenter.y += 12.5f; // 稍微抬高一點
+        energyBeamSystem->setCenter(cartCenter);
+
+        energyBeamShader->use();
+        energyBeamShader->set_uniform_value("view", view);
+        energyBeamShader->set_uniform_value("projection", projection);
+
+        float beamTime = currentTime - energyBeamStartTime;
+        energyBeamShader->set_uniform_value("time", beamTime);
+        energyBeamShader->set_uniform_value("explosionCenter", cartCenter);
+        energyBeamShader->set_uniform_value("beamLength", 20.0f);
+
+        energyBeamSystem->render(beamTime);
+        energyBeamShader->release();
+
+        glLineWidth(1.0f);
+        glDisable(GL_BLEND);
+        glEnable(GL_CULL_FACE);
+    }
+
+    // Render shockwave rings from cart center
+    if (enableShockwave && shockwaveSystem && shockwaveShader) {
+        glDisable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glLineWidth(2.5f);
+
+        // 使用車子中心作為中心點
+        // 車子模型矩陣：translate(pos) * rotate * scale(10)，所以cartMatrix[3]直接包含位置
+        glm::vec3 cartCenter = glm::vec3(cartMatrix[3]);
+        cartCenter.y = 3.0f; // 設置在地面高度
+        shockwaveSystem->setCenter(cartCenter);
+
+        shockwaveShader->use();
+        shockwaveShader->set_uniform_value("view", view);
+        shockwaveShader->set_uniform_value("projection", projection);
+
+        float shockwaveTime = currentTime - shockwaveStartTime;
+        shockwaveShader->set_uniform_value("time", shockwaveTime);
+        shockwaveShader->set_uniform_value("shockwaveCenter", cartCenter);
+
+        shockwaveSystem->render(shockwaveTime);
+        shockwaveShader->release();
 
         glLineWidth(1.0f);
         glDisable(GL_BLEND);
@@ -592,6 +754,24 @@ void render(){
         glDisable(GL_BLEND);
     }
 
+    // Render burning effect on cart if collided (synced with explode)
+    if (enableExplode && explodeStartTime >= 0.0f && burningShader && cartModel && cartModel->vertices.size() > 0) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        burningShader->use();
+        burningShader->set_uniform_value("model", cartMatrix);
+        burningShader->set_uniform_value("view", view);
+        burningShader->set_uniform_value("projection", projection);
+        burningShader->set_uniform_value("time", currentTime);
+        burningShader->set_uniform_value("carCollisionTime", explodeStartTime); // Sync with explode start time
+        
+        cartModel->render();
+        burningShader->release();
+        
+        glDisable(GL_BLEND);
+    }
+
     // Render city (static model)
     if (cityModel && cityModel->vertices.size() > 0) {
         staticShader->use();
@@ -675,6 +855,9 @@ int main() {
 
     // setup texture, model, shader ...e.t.c
     setup();
+    // rain_setup();
+    energy_beam_setup();
+    shockwave_setup();
     
     // render loop
     while (!glfwWindowShouldClose(window)) {
@@ -690,6 +873,7 @@ int main() {
     if (explodeShader) delete explodeShader;
     if (cartModel) delete cartModel;
     if (cityModel) delete cityModel;
+    if (burningShader) delete burningShader;
     for (auto shader : shaderPrograms) {
         delete shader;
     }
@@ -697,6 +881,10 @@ int main() {
     if (staticShader) delete staticShader;
     if (cinematicDirector) delete cinematicDirector;
     if (motionBlurShader) delete motionBlurShader;
+    if (energyBeamShader) delete energyBeamShader;
+    if (energyBeamSystem) delete energyBeamSystem;
+    if (shockwaveShader) delete shockwaveShader;
+    if (shockwaveSystem) delete shockwaveSystem;
 
     delete rainShader;
     delete rainSystem;
@@ -731,9 +919,9 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         if (!animationStarted) {
             animationStarted = true;
             animationStartTime = currentTime;
-            if (cinematicDirector) {
-                cinematicDirector->Start(); // 啟動cinematic director
-            }
+            // if (cinematicDirector) {
+            //     cinematicDirector->Start(); // 啟動cinematic director
+            // }
             std::cout << "Animation started! (Press C again to restart)" << std::endl;
         } else {
             // 重新开始动画

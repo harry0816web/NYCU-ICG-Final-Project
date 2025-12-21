@@ -1204,4 +1204,6 @@ src/CMakeFiles/ICG_2024_HW3_Animated.dir/main_animated.cpp.o: \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__random/uniform_random_bit_generator.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__random/weibull_distribution.h \
   /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/header/cinematic_director.h \
-  /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/header/camera.h
+  /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/header/camera.h \
+  /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/header/shockwave_rings.h \
+  /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation/src/header/energy_beam.h

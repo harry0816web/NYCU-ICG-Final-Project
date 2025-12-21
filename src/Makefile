@@ -223,6 +223,30 @@ cinematic_director.cpp.s:
 	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/cinematic_director.cpp.s
 .PHONY : cinematic_director.cpp.s
 
+energy_beam.o: energy_beam.cpp.o
+.PHONY : energy_beam.o
+
+# target to build an object file
+energy_beam.cpp.o:
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.o
+.PHONY : energy_beam.cpp.o
+
+energy_beam.i: energy_beam.cpp.i
+.PHONY : energy_beam.i
+
+# target to preprocess a source file
+energy_beam.cpp.i:
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.i
+.PHONY : energy_beam.cpp.i
+
+energy_beam.s: energy_beam.cpp.s
+.PHONY : energy_beam.s
+
+# target to generate assembly for a file
+energy_beam.cpp.s:
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/energy_beam.cpp.s
+.PHONY : energy_beam.cpp.s
+
 main_animated.o: main_animated.cpp.o
 .PHONY : main_animated.o
 
@@ -295,6 +319,30 @@ shader.cpp.s:
 	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/shader.cpp.s
 .PHONY : shader.cpp.s
 
+shockwave_rings.o: shockwave_rings.cpp.o
+.PHONY : shockwave_rings.o
+
+# target to build an object file
+shockwave_rings.cpp.o:
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.o
+.PHONY : shockwave_rings.cpp.o
+
+shockwave_rings.i: shockwave_rings.cpp.i
+.PHONY : shockwave_rings.i
+
+# target to preprocess a source file
+shockwave_rings.cpp.i:
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.i
+.PHONY : shockwave_rings.cpp.i
+
+shockwave_rings.s: shockwave_rings.cpp.s
+.PHONY : shockwave_rings.s
+
+# target to generate assembly for a file
+shockwave_rings.cpp.s:
+	cd /Users/harryp/Desktop/Courses/ICG/ICG_2025_HW3_animation && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/ICG_2024_HW3_Animated.dir/build.make src/CMakeFiles/ICG_2024_HW3_Animated.dir/shockwave_rings.cpp.s
+.PHONY : shockwave_rings.cpp.s
+
 static_model.o: static_model.cpp.o
 .PHONY : static_model.o
 
@@ -362,6 +410,9 @@ help:
 	@echo "... cinematic_director.o"
 	@echo "... cinematic_director.i"
 	@echo "... cinematic_director.s"
+	@echo "... energy_beam.o"
+	@echo "... energy_beam.i"
+	@echo "... energy_beam.s"
 	@echo "... main_animated.o"
 	@echo "... main_animated.i"
 	@echo "... main_animated.s"
@@ -371,6 +422,9 @@ help:
 	@echo "... shader.o"
 	@echo "... shader.i"
 	@echo "... shader.s"
+	@echo "... shockwave_rings.o"
+	@echo "... shockwave_rings.i"
+	@echo "... shockwave_rings.s"
 	@echo "... static_model.o"
 	@echo "... static_model.i"
 	@echo "... static_model.s"

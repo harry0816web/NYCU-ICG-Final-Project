@@ -8,6 +8,8 @@ add_executable(ICG_2024_HW3_Animated
 "static_model.cpp"
 "rain.cpp"
 "cinematic_director.cpp"
+"energy_beam.cpp"
+"shockwave_rings.cpp"
 )
 target_link_libraries(ICG_2024_HW3_Animated
 glfw
