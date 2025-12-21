@@ -47,6 +47,9 @@ public:
     // 每一幀更新（傳入 deltaTime）
     void Update(float deltaTime);
     
+    // 使用指定時間更新相機（用於與動畫時間同步）
+    void UpdateCameraWithTime(float currentTime);
+    
     // 是否正在播放
     bool IsPlaying() const { return m_IsPlaying; }
     

@@ -208,8 +208,8 @@ void camera_setup(){
     camera.yaw = 90.0f;
     camera.pitch = 10.0f;
     camera.radius = 400.0f;
-    camera.minRadius = 150.0f;
-    camera.maxRadius = 800.0f;
+    camera.minRadius = 0.1f;  // 允許非常靠近物體進行特寫
+    camera.maxRadius = 10000.0f;  // 允許很遠的距離
     camera.orbitRotateSpeed = 60.0f;
     camera.orbitZoomSpeed = 400.0f;
     camera.minOrbitPitch = -80.0f;
@@ -388,6 +388,18 @@ void update(){
     deltaTime = currentTime - lastFrame;
     lastFrame = currentTime;
     
+    // 每秒輸出相機位置和lookat，用於記錄關鍵幀（一開始就輸出，不用按C）
+    static float lastCameraOutputTime = -1.0f;
+    if (currentTime - lastCameraOutputTime >= 1.0f || lastCameraOutputTime < 0.0f) {
+        // 計算實際的lookat點：在orbit系統中，lookat點 = position + front * radius = target
+        // 但為了確保正確，我們直接計算：position + front * radius
+        glm::vec3 actualLookAt = camera.position + camera.front * camera.radius;
+        std::cout << "Camera Keyframe: Time=" << (int)currentTime << "s, Position=(" 
+                  << camera.position.x << ", " << camera.position.y << ", " << camera.position.z 
+                  << "), LookAt=(" << actualLookAt.x << ", " << actualLookAt.y << ", " << actualLookAt.z << ")" << std::endl;
+        lastCameraOutputTime = currentTime;
+    }
+    
     // Update animation (use relative time if animation has started)
     float animationTime = animationStarted ? (currentTime - animationStartTime) : 0.0f;
     
@@ -411,6 +423,7 @@ void update(){
             cinematicDirector->UpdateCharacterMovement(animationTime);
             cinematicDirector->UpdateCartMovement(animationTime);
             cinematicDirector->UpdateHeadRotation(animationTime);
+            cinematicDirector->UpdateCameraWithTime(animationTime); // 更新相機
             // 注意：m_CharacterModel 和 m_CartModel 是引用，直接更新了 modelMatrix 和 cartMatrix
             // 所以不需要再次賦值
         } else {
@@ -692,10 +705,17 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         if (!animationStarted) {
             animationStarted = true;
             animationStartTime = currentTime;
+            if (cinematicDirector) {
+                cinematicDirector->Start(); // 啟動cinematic director
+            }
             std::cout << "Animation started! (Press C again to restart)" << std::endl;
         } else {
             // 重新开始动画
             animationStartTime = currentTime;
+            if (cinematicDirector) {
+                cinematicDirector->Stop();
+                cinematicDirector->Start(); // 重新啟動cinematic director
+            }
             std::cout << "Animation restarted!" << std::endl;
         }
     }
