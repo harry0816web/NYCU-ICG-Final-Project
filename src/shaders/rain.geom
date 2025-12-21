@@ -11,39 +11,39 @@ out vec4 gColor;
 uniform mat4 view;
 uniform mat4 projection;
 uniform float time;
-uniform float rainLength;  // 雨滴长度
+uniform float rainLength;  // raindrop length
 
 void main()
 {
-    // 获取输入点的位置
+    // get input point position
     vec4 position = gl_in[0].gl_Position;
     float speed = vSpeed[0];
     float offset = vOffset[0];
 
-    // 计算当前雨滴的 Y 位置 (随时间下落)
+    // calculate current raindrop Y position (falling over time)
     float animTime = time + offset;
     float yPos = position.y - mod(animTime * speed, 200.0);
 
-    // 如果雨滴掉到地面以下,重置到顶部
+    // if raindrop falls below ground, reset to top
     if (yPos < -50.0) {
         yPos += 200.0;
     }
 
-    // 雨滴的起始点 (顶部)
+    // raindrop start point (top)
     vec4 startPos = vec4(position.x, yPos, position.z, 1.0);
 
-    // 雨滴的结束点 (底部,稍微短一些形成线条)
+    // raindrop end point (bottom, slightly shorter to form line)
     vec4 endPos = vec4(position.x, yPos - rainLength, position.z, 1.0);
 
-    // 带透明度渐变的雨滴效果
+    // raindrop effect with transparency gradient
     float alpha = smoothstep(-50.0, 50.0, yPos);
 
-    // 雨滴顶部 - 半透明
+    // raindrop top - semi-transparent
     gColor = vec4(0.9, 0.95, 1.0, alpha * 0.5);
     gl_Position = projection * view * startPos;
     EmitVertex();
 
-    // 雨滴底部 - 更透明,形成拖尾效果
+    // raindrop bottom - more transparent, forming trail effect
     gColor = vec4(0.9, 0.95, 1.0, alpha * 0.3);
     gl_Position = projection * view * endPos;
     EmitVertex();

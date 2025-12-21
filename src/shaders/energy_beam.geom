@@ -13,39 +13,39 @@ out vec4 gColor;
 uniform mat4 view;
 uniform mat4 projection;
 uniform float time;
-uniform vec3 explosionCenter;  // 爆炸中心點
-uniform float beamLength;      // 能量線長度
+uniform vec3 explosionCenter;  // explosion center point
+uniform float beamLength;      // energy beam length
 
 void main()
 {
     vec3 direction = vDirection[0];
     float speed = vSpeed[0];
     float offset = vOffset[0];
-    vec3 baseColor = vColor[0];  // 直接使用混合後的 RGB 顏色
+    vec3 baseColor = vColor[0];  // directly use mixed RGB color
 
-    // 計算當前能量線的延伸距離（隨時間增長）
+    // calculate current energy beam extension distance (grows over time)
     float animTime = time + offset;
     float distance = animTime * speed;
 
-    // 能量線的起始點（爆炸中心）
+    // energy beam start point (explosion center)
     vec4 startPos = vec4(explosionCenter, 1.0);
 
-    // 能量線的結束點（沿方向延伸）
+    // energy beam end point (extended along direction)
     vec4 endPos = vec4(explosionCenter + direction * distance, 1.0);
 
-    // 計算能量線的尾部起點（形成線段，而非從中心射出的射線）
+    // calculate energy beam tail start point (forms line segment, not ray from center)
     float tailDistance = max(0.0, distance - beamLength);
     vec4 tailPos = vec4(explosionCenter + direction * tailDistance, 1.0);
 
-    // 計算透明度（距離越遠越透明，模擬能量衰減）
+    // calculate transparency (farther distance more transparent, simulate energy decay)
     float alpha = smoothstep(150.0, 0.0, distance);
 
-    // 能量線尾部 - 較暗
+    // energy beam tail - darker
     gColor = vec4(baseColor * 0.5, alpha * 0.8);
     gl_Position = projection * view * tailPos;
     EmitVertex();
 
-    // 能量線前端 - 較亮（頭部更亮，形成能量感）
+    // energy beam front - brighter (head brighter, forms energy feeling)
     gColor = vec4(baseColor * 1.5, alpha);
     gl_Position = projection * view * endPos;
     EmitVertex();

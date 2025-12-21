@@ -13,7 +13,7 @@ out VS_OUT {
 
 void main()
 {
-    // 將法線從模型空間轉換到裁剪空間
+    // transform normal from model space to clip space
     mat3 normalMatrix = mat3(transpose(inverse(view * model)));
     vs_out.normal = normalize(vec3(projection * vec4(normalMatrix * aNormal, 0.0)));
     

@@ -7,11 +7,11 @@
 #include <random>
 
 struct ShockwaveRing {
-    float startRadius;      // 起始半徑
-    float speed;            // 擴張速度
-    float offset;           // 時間偏移量
-    float thickness;        // 環的厚度
-    glm::vec3 color;        // RGB 顏色
+    float startRadius;      // initial radius
+    float speed;            // expansion speed
+    float offset;           // time offset
+    float thickness;        // ring thickness
+    glm::vec3 color;        // RGB color
 };
 
 class ShockwaveRingSystem {

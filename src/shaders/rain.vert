@@ -1,8 +1,8 @@
 #version 330 core
 
-layout (location = 0) in vec3 aPos;      // 雨滴起始位置
-layout (location = 1) in float aSpeed;   // 雨滴下落速度
-layout (location = 2) in float aOffset;  // 时间偏移量
+layout (location = 0) in vec3 aPos;      // raindrop initial position
+layout (location = 1) in float aSpeed;   // raindrop fall speed
+layout (location = 2) in float aOffset;  // time offset
 
 out float vSpeed;
 out float vOffset;

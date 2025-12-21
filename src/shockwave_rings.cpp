@@ -23,7 +23,7 @@ void ShockwaveRingSystem::generateRings() {
     std::uniform_real_distribution<float> thicknessDist(0.3f, 0.8f);
     std::uniform_real_distribution<float> mixDist(0.0f, 1.0f);
 
-    // 定義基本顏色：白、淺藍、淺青
+    // define basic colors: white, light blue, cyan
     glm::vec3 white(1.0f, 1.0f, 1.0f);
     glm::vec3 lightBlue(0.6f, 0.8f, 1.0f);
     glm::vec3 cyan(0.5f, 1.0f, 1.0f);
@@ -37,7 +37,7 @@ void ShockwaveRingSystem::generateRings() {
         ring.offset = offsetDist(gen);
         ring.thickness = thicknessDist(gen);
 
-        // 隨機混合白、淺藍、淺青三種顏色
+        // randomly mix white, light blue, cyan three colors
         float w = mixDist(gen);
         float b = mixDist(gen);
         float c = mixDist(gen);
@@ -61,27 +61,27 @@ void ShockwaveRingSystem::setup() {
     glBufferData(GL_ARRAY_BUFFER, rings.size() * sizeof(ShockwaveRing),
                  rings.data(), GL_STATIC_DRAW);
 
-    // 起始半徑 (location = 0)
+    // initial radius (location = 0)
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(ShockwaveRing),
                           (void*)offsetof(ShockwaveRing, startRadius));
 
-    // 速度 (location = 1)
+    // speed (location = 1)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(ShockwaveRing),
                           (void*)offsetof(ShockwaveRing, speed));
 
-    // 偏移 (location = 2)
+    // offset (location = 2)
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(ShockwaveRing),
                           (void*)offsetof(ShockwaveRing, offset));
 
-    // 厚度 (location = 3)
+    // thickness (location = 3)
     glEnableVertexAttribArray(3);
     glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(ShockwaveRing),
                           (void*)offsetof(ShockwaveRing, thickness));
 
-    // 顏色 (location = 4)
+    // color (location = 4)
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(ShockwaveRing),
                           (void*)offsetof(ShockwaveRing, color));

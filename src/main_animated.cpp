@@ -122,7 +122,7 @@ shader_program_t* burningShader = nullptr;
 // explode effect
 bool enableExplode = false;
 float explodeStartTime = -1.0f;
-float explodeDuration = 2.0f;  // 爆炸動畫持續時間
+float explodeDuration = 2.0f;  // explosion animation duration
 StaticModel* cityModel = nullptr;
 glm::mat4 cityMatrix;
 
@@ -175,9 +175,9 @@ void model_setup(){
     
     modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.1f, 0.1f, 0.1f));
-    // 初始位置：x=150, z=100，朝向右边（绕Y轴旋转-90度，让角色面向+X方向）
+    // initial position: x=150, z=100, facing right (rotate -90 degrees around Y axis to make character face +X direction)
     modelMatrix = glm::translate(modelMatrix, glm::vec3(150.0f, 0.0f, 100.0f));
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // 朝向右边
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // facing right
     
     // Load cart model
 #if defined(__linux__) || defined(__APPLE__)
@@ -189,14 +189,14 @@ void model_setup(){
     cartModel = new StaticModel(cart_file);
     
     // Set cart position and scale
-    // 初始位置：在人物左方，往+Z很多（遠離螢幕），往+X一點（往右）
-    // OpenGL座標系說明：
-    // - X軸：右為正(+X)，左為負(-X)
-    // - Y軸：上為正(+Y)，下為負(-Y)
-    // - Z軸：前為正(+Z，螢幕外)，後為負(-Z，螢幕裡)
+    // initial position: to the left of character, far in +Z direction (away from screen), slightly in +X direction (to the right)
+    // OpenGL coordinate system:
+    // - X axis: right is positive (+X), left is negative (-X)
+    // - Y axis: up is positive (+Y), down is negative (-Y)
+    // - Z axis: forward is positive (+Z, out of screen), backward is negative (-Z, into screen)
     cartMatrix = glm::mat4(1.0f);
-    cartMatrix = glm::translate(cartMatrix, glm::vec3(0.0f, 0.0f, 150.0f)); // Position: X=-20 (往右一點), Z=40 (往+Z很多，遠離螢幕)
-    cartMatrix = glm::rotate(cartMatrix, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // 旋轉180度，讓車頭朝向螢幕裡面（-Z方向）
+    cartMatrix = glm::translate(cartMatrix, glm::vec3(0.0f, 0.0f, 150.0f)); // position: X=-20 (slightly to the right), Z=40 (far in +Z direction, away from screen)
+    cartMatrix = glm::rotate(cartMatrix, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // rotate 180 degrees to make car face inward (toward -Z direction)
     cartMatrix = glm::scale(cartMatrix, glm::vec3(10.0f, 10.0f, 10.0f)); // Scale to appropriate size
 
     // Load city model - COMMENTED OUT
@@ -240,8 +240,8 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    // 允许手动控制相机（固定視角模式）
-    // COMMENTED OUT: 暫時註釋掉鏡頭軌跡檢查
+    // allow manual camera control (fixed view mode)
+    // commented out: temporarily disable camera trajectory check
     // if (!enableCinematic) {
     {
         glm::vec2 orbitInput(0.0f);
@@ -278,8 +278,8 @@ void camera_setup(){
     camera.yaw = 90.0f;
     camera.pitch = 10.0f;
     camera.radius = 400.0f;
-    camera.minRadius = 0.1f;  // 允許非常靠近物體進行特寫
-    camera.maxRadius = 10000.0f;  // 允許很遠的距離
+    camera.minRadius = 0.1f;  // allow very close to objects for close-up shots
+    camera.maxRadius = 10000.0f;  // allow very far distances
     camera.orbitRotateSpeed = 60.0f;
     camera.orbitZoomSpeed = 400.0f;
     camera.minOrbitPitch = -80.0f;
@@ -480,47 +480,47 @@ void update(){
     deltaTime = currentTime - lastFrame;
     lastFrame = currentTime;
     
-    // 移除重複的相機輸出（由cinematic_director.cpp統一輸出）
+    // remove duplicate camera output (unified output by cinematic_director.cpp)
     
     // Update animation (use relative time if animation has started)
     float animationTime = animationStarted ? (currentTime - animationStartTime) : 0.0f;
     
-    // 計算用於動畫的時間（如果翻滾已開始，停止走路動畫）
+    // calculate animation time (if rolling has started, stop walking animation)
     float animationTimeForModel = animationTime;
     if (cinematicDirector && animationStarted) {
         float rollStartTime = cinematicDirector->GetRollStartTime();
         if (rollStartTime >= 0.0f && animationTime >= rollStartTime) {
-            // 翻滾開始後，保持動畫時間在翻滾開始時（停止走路動畫）
+            // after rolling starts, keep animation time at roll start time (stop walking animation)
             animationTimeForModel = rollStartTime;
         }
     }
     
-    // 使用限制後的動畫時間更新模型動畫（停止走路動畫）
+    // update model animation with limited animation time (stop walking animation)
     animatedModel->updateAnimation(animationTimeForModel);
 
     // Update character and cart movement based on animation time
     if (cinematicDirector) {
         if (animationStarted) {
-            // 動畫開始後，使用原始動畫時間更新位置（不限制，讓翻滾可以繼續）
+            // after animation starts, use original animation time to update positions (no limit, allow rolling to continue)
             cinematicDirector->UpdateCharacterMovement(animationTime);
             cinematicDirector->UpdateCartMovement(animationTime);
             cinematicDirector->UpdateHeadRotation(animationTime);
-            cinematicDirector->UpdateCameraWithTime(animationTime); // 更新相機
+            cinematicDirector->UpdateCameraWithTime(animationTime); // update camera
             
-            // 檢查是否發生碰撞並觸發shockwave和energy_beam
-            // 使用靜態變量追蹤是否已經觸發過，避免重複觸發
+            // check if collision occurred and trigger shockwave and energy_beam
+            // use static variable to track if already triggered, avoid duplicate triggers
             static float lastCollisionCheckTime = -1.0f;
             float collisionTime = cinematicDirector->GetCollisionTime();
             
-            // 如果碰撞時間改變了（新發生碰撞），觸發特效
+            // if collision time changed (new collision occurred), trigger effects
             if (collisionTime >= 0.0f && collisionTime != lastCollisionCheckTime) {
                 enableShockwave = true;
                 enableEnergyBeam = true;
                 shockwaveStartTime = currentTime;
                 energyBeamStartTime = currentTime;
                 
-                // 設置shockwave和energy_beam的中心點為車子中心
-                // 車子模型矩陣：translate(pos) * rotate * scale(10)，所以cartMatrix[3]直接包含位置
+                // set shockwave and energy_beam center point to cart center
+                // cart model matrix: translate(pos) * rotate * scale(10), so cartMatrix[3] directly contains position
                 glm::vec3 cartCenter = glm::vec3(cartMatrix[3]);
                 if (shockwaveSystem) {
                     shockwaveSystem->setCenter(cartCenter);
@@ -540,7 +540,7 @@ void update(){
                           << cartCenter.x << ", " << cartCenter.y << ", " << cartCenter.z << ")" << std::endl;
             }
             
-            // 檢查是否滾動結束並觸發爆炸和burning特效
+            // check if rolling finished and trigger explode and burning effects
             if (cinematicDirector->IsRollFinished() && !enableExplode) {
                 enableExplode = true;
                 explodeStartTime = currentTime;
@@ -550,11 +550,10 @@ void update(){
                 }
             }
         } else {
-            // 動畫未開始時，確保使用初始位置（與 model_setup 中設置的一致）
-            // 這樣動畫開始時會從初始位置開始
+            // when animation hasn't started, ensure using initial positions (consistent with model_setup)
+            // so animation will start from initial position
             cinematicDirector->UpdateCharacterMovement(0.0f);
             cinematicDirector->UpdateCartMovement(0.0f);
-            // 注意：m_CharacterModel 和 m_CartModel 是引用，直接更新了 modelMatrix 和 cartMatrix
         }
     }
 }
@@ -595,10 +594,10 @@ void render(){
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         glLineWidth(3.5f);
 
-        // 使用車子中心作為中心點
-        // 車子模型矩陣：translate(pos) * rotate * scale(10)，所以cartMatrix[3]直接包含位置
+        // use cart center as center point
+        // cart model matrix: translate(pos) * rotate * scale(10), so cartMatrix[3] directly contains position
         glm::vec3 cartCenter = glm::vec3(cartMatrix[3]);
-        cartCenter.y += 12.5f; // 稍微抬高一點
+        cartCenter.y += 12.5f; // slightly raise
         energyBeamSystem->setCenter(cartCenter);
 
         energyBeamShader->use();
@@ -625,10 +624,10 @@ void render(){
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         glLineWidth(2.5f);
 
-        // 使用車子中心作為中心點
-        // 車子模型矩陣：translate(pos) * rotate * scale(10)，所以cartMatrix[3]直接包含位置
+        // use cart center as center point
+        // cart model matrix: translate(pos) * rotate * scale(10), so cartMatrix[3] directly contains position
         glm::vec3 cartCenter = glm::vec3(cartMatrix[3]);
-        cartCenter.y = 3.0f; // 設置在地面高度
+        cartCenter.y = 3.0f; // set at ground height
         shockwaveSystem->setCenter(cartCenter);
 
         shockwaveShader->use();
@@ -648,16 +647,16 @@ void render(){
     }
 
     // Render animated model
-    // 判斷是否使用爆炸效果
+    // determine whether to use explode effect
     shader_program_t* currentShader = nullptr;
     float explodeStrength = 0.0f;
     
     if (enableExplode && explodeShader) {
         currentShader = explodeShader;
-        // 計算爆炸強度 (0.0 到 1.0+)
+        // calculate explode strength (0.0 to 1.0+)
         float timeSinceExplode = currentTime - explodeStartTime;
         explodeStrength = timeSinceExplode / explodeDuration;
-        // 不限制上限，讓爆炸可以持續擴散
+        // no upper limit, allow explosion to continue spreading
     } else if (shaderProgramIndex < shaderPrograms.size()) {
         currentShader = shaderPrograms[shaderProgramIndex];
     }
@@ -672,12 +671,12 @@ void render(){
         currentShader->set_uniform_value("projection", projection);
         currentShader->set_uniform_value("viewPos", camera.position);
         
-        // 如果是爆炸 shader，設置額外的 uniform
+        // if explode shader, set additional uniforms
         if (enableExplode && explodeShader && currentShader == explodeShader) {
             currentShader->set_uniform_value("time", currentTime);
             currentShader->set_uniform_value("explodeStrength", explodeStrength);
         } else {
-            // 非爆炸 shader 的 lighting 和 material uniforms
+            // lighting and material uniforms for non-explode shaders
             currentShader->set_uniform_value("lightPos", light.position);
             currentShader->set_uniform_value("lightAmbient", light.ambient);
             currentShader->set_uniform_value("lightDiffuse", light.diffuse);
@@ -732,17 +731,17 @@ void render(){
     // Render cart (static model)
     // Render cart with motion blur effect
     if (cartModel && cartModel->vertices.size() > 0) {
-        // 启用混合模式（用于半透明残影）
+        // enable blend mode (for semi-transparent motion trails)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
-        // 使用 motion blur shader
+        // use motion blur shader
         motionBlurShader->use();
         motionBlurShader->set_uniform_value("model", cartMatrix);
         motionBlurShader->set_uniform_value("view", view);
         motionBlurShader->set_uniform_value("projection", projection);
         
-        // 使用动画时间而不是全局时间
+        // use animation time instead of global time
         float animationTime = animationStarted ? (currentTime - animationStartTime) : 0.0f;
         motionBlurShader->set_uniform_value("time", animationTime);
         
@@ -750,7 +749,7 @@ void render(){
         cartModel->render();
         motionBlurShader->release();
         
-        // 关闭混合模式
+        // disable blend mode
         glDisable(GL_BLEND);
     }
 
@@ -908,27 +907,27 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         shaderProgramIndex = 3;
     if (key == GLFW_KEY_4 && action == GLFW_PRESS)
         shaderProgramIndex = 4;
-    // 按 R 键切换雨滴显示
+    // press R key to toggle rain display
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         enableRain = !enableRain;
         std::cout << "Rain effect: " << (enableRain ? "ON" : "OFF") << std::endl;
     }
     
-    // 按 C 键开始动画
+    // press C key to start animation
     if (key == GLFW_KEY_C && action == GLFW_PRESS) {
         if (!animationStarted) {
             animationStarted = true;
             animationStartTime = currentTime;
             if (cinematicDirector) {
-                cinematicDirector->Start(); // 啟動cinematic director
+                cinematicDirector->Start(); // start cinematic director
             }
             std::cout << "Animation started! (Press C again to restart)" << std::endl;
         } else {
-            // 重新开始动画
+            // restart animation
             animationStartTime = currentTime;
             if (cinematicDirector) {
                 cinematicDirector->Stop();
-                cinematicDirector->Start(); // 重新啟動cinematic director
+                cinematicDirector->Start(); // restart cinematic director
             }
             std::cout << "Animation restarted!" << std::endl;
         }

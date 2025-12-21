@@ -6,19 +6,19 @@ in VS_OUT {
     vec3 normal;
 } gs_in[];
 
-// 控制法線線段的長度
+// control normal line segment length
 uniform float normalLength;
 
 out vec3 fColor;
 
 void GenerateLine(int index)
 {
-    // 起點：頂點位置 (黃色)
+    // start point: vertex position (yellow)
     fColor = vec3(1.0, 1.0, 0.0);
     gl_Position = gl_in[index].gl_Position;
     EmitVertex();
     
-    // 終點：頂點位置 + 法線方向 (紅色)
+    // end point: vertex position + normal direction (red)
     fColor = vec3(1.0, 0.0, 0.0);
     gl_Position = gl_in[index].gl_Position + vec4(gs_in[index].normal, 0.0) * 10;
     EmitVertex();
@@ -28,7 +28,7 @@ void GenerateLine(int index)
 
 void main()
 {
-    // 為三角形的每個頂點生成一條法線
+    // generate one normal line for each vertex of the triangle
     GenerateLine(0);
     GenerateLine(1);
     GenerateLine(2);

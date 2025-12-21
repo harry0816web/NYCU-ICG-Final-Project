@@ -19,9 +19,9 @@ public:
 
 private:
     struct RainDrop {
-        glm::vec3 position;  // 起始位置
-        float speed;         // 下落速度
-        float offset;        // 时间偏移
+        glm::vec3 position;  // initial position
+        float speed;         // fall speed
+        float offset;        // time offset
     };
 
     std::vector<RainDrop> raindrops;
