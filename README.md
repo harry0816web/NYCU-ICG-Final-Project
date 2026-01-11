@@ -1,3 +1,1 @@
-# ICG-final-projcet
-# ICG-final-project
-# icg-final-2
+# NYCU-ICG-final-projcet
