@@ -10,7 +10,7 @@ in VS_OUT {
 out vec2 TexCoord;
 
 uniform float time;
-uniform float explodeStrength;  // 爆炸強度 (0.0 = 無效果, 1.0+ = 完全爆炸)
+uniform float explodeStrength;  // explosion intensity (0.0 = none, 1.0 = full)
 
 vec3 GetNormal()
 {
@@ -21,8 +21,8 @@ vec3 GetNormal()
 
 vec4 explode(vec4 position, vec3 normal)
 {
-    // 使用 explodeStrength 控制爆炸程度
-    float magnitude = explodeStrength * 50.0;  // 調整爆炸距離
+    // push triangle along its normal scaled by explodeStrength
+    float magnitude = explodeStrength * 50.0;  // adjust explosion distance
     vec3 direction = normal * magnitude;
     return position + vec4(direction, 0.0);
 }

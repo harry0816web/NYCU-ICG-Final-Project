@@ -1,5 +1,5 @@
 #version 330 core
-
+// expand points into animated ground-plane shockwave rings
 layout (points) in;
 layout (line_strip, max_vertices = 65) out;
 
@@ -24,19 +24,19 @@ void main()
     float thickness = vThickness[0];
     vec3 baseColor = vColor[0];
 
-    // 計算當前衝擊波環的半徑
+    // compute current ring radius
     float animTime = time + offset;
     float radius = startRadius + animTime * speed;
 
-    // 透明度隨距離衰減
+    // fade by distance
     float alpha = smoothstep(80.0, 0.0, radius);
 
-    // 如果環已經消失，不渲染
+    // early out if faded
     if (alpha <= 0.01) {
         return;
     }
 
-    // 生成圓環（在地面 XZ 平面上）
+    // generate circle on ground (xz plane)
     const float PI = 3.14159265359;
     int segments = 64;
 
@@ -45,10 +45,10 @@ void main()
         float x = cos(angle) * radius;
         float z = sin(angle) * radius;
 
-        // 環的位置（shockwaveCenter 已經包含高度）
+        // ring position (shockwaveCenter already stores height)
         vec3 position = shockwaveCenter + vec3(x, 0.0, z);
 
-        // 顏色從內到外變化（中心更亮）
+        // brighten toward center
         float brightness = 1.0 + (1.0 - smoothstep(0.0, 50.0, radius)) * 0.5;
         gColor = vec4(baseColor * brightness, alpha);
 

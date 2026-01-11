@@ -1,4 +1,5 @@
 #version 330 core
+// emit line segments per-vertex to visualize normals
 layout (triangles) in;
 layout (line_strip, max_vertices = 6) out;
 

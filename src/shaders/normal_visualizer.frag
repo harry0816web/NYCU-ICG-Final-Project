@@ -1,5 +1,5 @@
 #version 330 core
-
+// color lines representing normals
 out vec4 FragColor;
 
 in vec3 fColor;

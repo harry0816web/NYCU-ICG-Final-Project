@@ -7,15 +7,16 @@
 #include <glm/gtc/type_ptr.hpp>
 
 StaticModel::StaticModel(const std::string& path) {
+    // load geometry plus materials immediately to keep instance usable
     loadModel(path);
 }
 
 void StaticModel::loadModel(const std::string& path) {
-    // Extract directory from path
+    // extract directory from path
     size_t lastSlash = path.find_last_of("/\\");
     directory = (lastSlash == std::string::npos) ? "" : path.substr(0, lastSlash + 1);
     
-    // Check if file exists
+    // check if file exists
     std::ifstream fileCheck(path);
     if (!fileCheck.good()) {
         std::cout << "ERROR::STATIC_MODEL:: File not found: " << path << std::endl;
@@ -23,7 +24,7 @@ void StaticModel::loadModel(const std::string& path) {
     }
     fileCheck.close();
     
-    // Import flags for OBJ files
+    // import flags for OBJ files
     unsigned int importFlags = aiProcess_Triangulate 
                              | aiProcess_GenSmoothNormals 
                              | aiProcess_FlipUVs 
@@ -45,7 +46,7 @@ void StaticModel::loadModel(const std::string& path) {
     std::cout << "  - Meshes: " << m_scene->mNumMeshes << std::endl;
     std::cout << "  - Materials: " << m_scene->mNumMaterials << std::endl;
     
-    // Load materials
+    // load materials
     materials.resize(m_scene->mNumMaterials);
     for (unsigned int i = 0; i < m_scene->mNumMaterials; i++) {
         aiMaterial* mat = m_scene->mMaterials[i];
@@ -59,31 +60,31 @@ void StaticModel::loadModel(const std::string& path) {
         material.hasTexture = false;
         material.texture = 0;
         
-        // Load ambient color
+        // load ambient color
         aiColor3D ambient(0.0f, 0.0f, 0.0f);
         if (mat->Get(AI_MATKEY_COLOR_AMBIENT, ambient) == AI_SUCCESS) {
             material.ambient = glm::vec3(ambient.r, ambient.g, ambient.b);
         }
         
-        // Load diffuse color
+        // load diffuse color
         aiColor3D diffuse(0.0f, 0.0f, 0.0f);
         if (mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS) {
             material.diffuse = glm::vec3(diffuse.r, diffuse.g, diffuse.b);
         }
         
-        // Load specular color
+        // load specular color
         aiColor3D specular(0.0f, 0.0f, 0.0f);
         if (mat->Get(AI_MATKEY_COLOR_SPECULAR, specular) == AI_SUCCESS) {
             material.specular = glm::vec3(specular.r, specular.g, specular.b);
         }
         
-        // Load shininess
+        // load shininess
         float shininess = 0.0f;
         if (mat->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS) {
             material.shininess = shininess;
         }
         
-        // Load diffuse texture
+        // load diffuse texture
         if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
             aiString str;
             mat->GetTexture(aiTextureType_DIFFUSE, 0, &str);
@@ -103,13 +104,13 @@ void StaticModel::loadModel(const std::string& path) {
 }
 
 void StaticModel::processNode(aiNode* node, const aiScene* scene) {
-    // Process each mesh located at the current node
+    // process each mesh located at the current node
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         processMesh(mesh, scene);
     }
     
-    // Recursively process each of the children nodes
+    // recursively process each of the children nodes
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
         processNode(node->mChildren[i], scene);
     }
@@ -118,16 +119,16 @@ void StaticModel::processNode(aiNode* node, const aiScene* scene) {
 void StaticModel::processMesh(aiMesh* mesh, const aiScene* scene) {
     unsigned int vertexStart = vertices.size();
     
-    // Process vertices
+    // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         StaticVertex vertex;
         
-        // Position
+        // position
         vertex.Position.x = mesh->mVertices[i].x;
         vertex.Position.y = mesh->mVertices[i].y;
         vertex.Position.z = mesh->mVertices[i].z;
         
-        // Normals
+        // normals
         if (mesh->HasNormals()) {
             vertex.Normal.x = mesh->mNormals[i].x;
             vertex.Normal.y = mesh->mNormals[i].y;
@@ -136,7 +137,7 @@ void StaticModel::processMesh(aiMesh* mesh, const aiScene* scene) {
             vertex.Normal = glm::vec3(0.0f, 1.0f, 0.0f);
         }
         
-        // Texture coordinates
+        // texture coordinates
         if (mesh->mTextureCoords[0]) {
             vertex.TexCoords.x = mesh->mTextureCoords[0][i].x;
             vertex.TexCoords.y = mesh->mTextureCoords[0][i].y;
@@ -147,14 +148,14 @@ void StaticModel::processMesh(aiMesh* mesh, const aiScene* scene) {
         vertices.push_back(vertex);
     }
     
-    // Process indices and material indices
+    // process indices and material indices
     for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
         aiFace face = mesh->mFaces[i];
         for (unsigned int j = 0; j < face.mNumIndices; j++) {
             indices.push_back(vertexStart + face.mIndices[j]);
         }
         
-        // Store material index for this face
+        // store material index for this face
         unsigned int materialIndex = mesh->mMaterialIndex;
         for (unsigned int j = 0; j < face.mNumIndices; j++) {
             materialIndices.push_back(materialIndex);
@@ -163,7 +164,7 @@ void StaticModel::processMesh(aiMesh* mesh, const aiScene* scene) {
 }
 
 unsigned int StaticModel::loadTextureFromFile(const std::string& path) {
-    // Check cache first
+    // check cache first
     if (textureCache.find(path) != textureCache.end()) {
         return textureCache[path];
     }
@@ -213,15 +214,15 @@ void StaticModel::setupMesh() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
     
-    // Vertex positions
+    // vertex positions
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(StaticVertex), (void*)0);
     
-    // Vertex normals
+    // vertex normals
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Normal));
     
-    // Vertex texture coords
+    // vertex texture coords
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(StaticVertex), (void*)offsetof(StaticVertex, TexCoords));
     

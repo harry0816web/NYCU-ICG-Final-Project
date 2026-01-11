@@ -1,5 +1,5 @@
 #version 330 core
-
+// pass raindrop attributes to geometry shader
 layout (location = 0) in vec3 aPos;      // raindrop initial position
 layout (location = 1) in float aSpeed;   // raindrop fall speed
 layout (location = 2) in float aOffset;  // time offset

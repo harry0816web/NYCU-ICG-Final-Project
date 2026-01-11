@@ -1,4 +1,5 @@
 #version 330 core
+// skybox vertex pass-through keeping depth at far plane
 layout (location = 0) in vec3 aPos;
 
 out vec3 TexCoords;

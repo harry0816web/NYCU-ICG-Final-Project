@@ -3,6 +3,7 @@
 
 ShockwaveRingSystem::ShockwaveRingSystem(int numRings)
     : numRings(numRings), shockwaveCenter(glm::vec3(0.0f)) {
+    // precompute ring attributes so GPU buffer stays static
     generateRings();
 }
 

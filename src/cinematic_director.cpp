@@ -19,6 +19,7 @@ CinematicDirector::CinematicDirector(camera_t& cam, glm::mat4& charModel, glm::m
     , m_CollisionTime(-1.0f)
     , m_CollisionPosition(0.0f, 0.0f, 500.0f)
 {
+    // initialize camera track and place characters at frame zero
     InitializeKeyframes();
     UpdateCharacterMovement(0.0f);
     UpdateCartMovement(0.0f);
@@ -54,6 +55,7 @@ void CinematicDirector::Reset() {
 void CinematicDirector::Update(float deltaTime) {
     if (!m_IsPlaying) return;
     
+    // advance global time while respecting optional looping
     m_GlobalTime += deltaTime;
     
     if (m_Loop && m_Keyframes.size() > 0) {
@@ -71,6 +73,7 @@ void CinematicDirector::UpdateCameraWithTime(float currentTime) {
     
     m_GlobalTime = currentTime;
     
+    // keep character and cart poses in sync with manual time scrub
     UpdateCharacterMovement(currentTime);
     UpdateCartMovement(currentTime);
     
@@ -166,6 +169,7 @@ void CinematicDirector::InitializeKeyframes() {
 void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     if (m_Keyframes.empty()) return;
     
+    // find the active keyframe pair for the current time
     size_t currentIndex = 0;
     for (size_t i = 0; i < m_Keyframes.size() - 1; i++) {
         if (currentTime >= m_Keyframes[i].time && currentTime < m_Keyframes[i + 1].time) {
@@ -198,6 +202,7 @@ void CinematicDirector::InterpolateBetweenKeyframes(float currentTime) {
     const Keyframe& keyframe1 = m_Keyframes[currentIndex];
     const Keyframe& keyframe2 = m_Keyframes[currentIndex + 1];
     
+    // interpolate camera pose between surrounding keyframes
     float timeInSegment = currentTime - keyframe1.time;
     float segmentDuration = keyframe2.time - keyframe1.time;
     float t = (segmentDuration > 0.0f) ? (timeInSegment / segmentDuration) : 0.0f;
@@ -289,6 +294,7 @@ void CinematicDirector::UpdateCamera(glm::vec3 position, glm::vec3 target) {
         m_Camera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     }
     
+    // derive view basis vectors from position/target
     m_Camera.front = glm::normalize(target - position);
     m_Camera.right = glm::normalize(glm::cross(m_Camera.front, m_Camera.worldUp));
     m_Camera.up = glm::normalize(glm::cross(m_Camera.right, m_Camera.front));

@@ -3,6 +3,7 @@
 
 EnergyBeamSystem::EnergyBeamSystem(int numBeams)
     : numBeams(numBeams), explosionCenter(glm::vec3(0.0f)) {
+    // precompute per-beam attributes before uploading to gpu
     generateBeams();
 }
 

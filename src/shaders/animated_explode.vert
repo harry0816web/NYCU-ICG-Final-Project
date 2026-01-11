@@ -18,9 +18,10 @@ out VS_OUT {
     vec3 normal;
 } vs_out;
 
+// vertex skinning for exploding geometry pass
 void main()
 {
-    // 骨骼動畫變換
+    // bone animation transform
     vec4 totalPosition = vec4(0.0);
     vec3 totalNormal = vec3(0.0);
     

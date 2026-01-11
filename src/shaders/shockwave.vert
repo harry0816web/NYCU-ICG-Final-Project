@@ -1,5 +1,5 @@
 #version 330 core
-
+// forward shockwave parameters to geometry shader
 layout (location = 0) in float aStartRadius;
 layout (location = 1) in float aSpeed;
 layout (location = 2) in float aOffset;

@@ -1,4 +1,5 @@
 #version 330 core
+// reconstruct past positions to emit layered motion trails
 layout (triangles) in;
 // note: if you want to generate 5 layers of motion trails, max_vertices should be at least 3 * 5 = 15
 layout (triangle_strip, max_vertices = 15) out;

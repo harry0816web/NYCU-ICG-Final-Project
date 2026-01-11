@@ -1,5 +1,5 @@
 #version 330 core
-
+// stretch points into short falling line segments
 layout (points) in;
 layout (line_strip, max_vertices = 2) out;
 

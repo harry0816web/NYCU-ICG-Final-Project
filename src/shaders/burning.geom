@@ -15,27 +15,26 @@ uniform mat4 projection;
 uniform float time;
 uniform float carCollisionTime; // Time when collision happened
 
-// Random functions
+// pseudo-random helper
 float random(float seed) {
     return fract(sin(seed * 78.233 + time * 0.1) * 43758.5453);
 }
 
+// spawn billboard fire particles after collision time
 void main()
 {
     float offsetTime = time - carCollisionTime;
     
-    // If not collided yet or just collided, maybe delay slightly or start immediately
+    // bail out until collision happens
     if (offsetTime < 0.0) return;
 
-    // Use triangle center
+    // use triangle center as emission anchor
     vec3 center = (gs_in[0].position + gs_in[1].position + gs_in[2].position) / 3.0;
     vec4 worldPos = model * vec4(center, 1.0);
 
-    // Filter: only emit from top part or random parts to simulate fire locations?
-    // Let's emit from everywhere for now, but maximize on top?
-    // Or just simple uniform emission.
+    // simple uniform emission with random sparsity
 
-    // Number of particles per triangle
+    // number of particles per triangle
     int count = 1; 
     
     // Randomly skip some triangles to control density if needed
@@ -44,31 +43,31 @@ void main()
     for(int i=0; i<count; i++) {
         float seed = float(i) + center.x * 12.3 + center.z * 45.6;
         
-        // Particle lifecycle
+        // particle lifecycle
         float life = 2.0; // seconds
-        // Each particle has a random start offset in the cycle
+        // each particle has a random start offset in the cycle
         float startOffset = random(seed) * life;
         float t = mod(offsetTime + startOffset, life);
         float progress = t / life;
 
-        // Position: rise up
+        // position: rise up
         vec3 pos = worldPos.xyz;
-        // Jitter starting position
+        // jitter starting position
         pos.x += (random(seed+1.0)-0.5) * 5.0; 
         pos.z += (random(seed+2.0)-0.5) * 5.0;
         pos.y += t * 40.0; // Rise speed, up to 80 units high
         
-        // Jitter motion (wind/turbulence)
+        // jitter motion (wind/turbulence)
         pos.x += sin(t * 3.0 + seed) * 5.0;
 
-        // Size: shrinks
+        // size: shrinks
         float size = 3.0 * (1.0 - progress * 0.5);
 
-        // Alpha: fade out
+        // alpha: fade out
         float alpha = 1.0 - progress;
         alpha *= 0.8; // Max alpha
         
-        // Color: Fire colors (Yellow -> Red -> Smoke)
+        // color: fire ramp (yellow -> red -> smoke)
         vec3 color;
         if(progress < 0.2) color = vec3(1.0, 0.9, 0.2); // Yellow
         else if(progress < 0.5) color = vec3(1.0, 0.4, 0.0); // Orange

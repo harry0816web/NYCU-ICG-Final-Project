@@ -1,5 +1,6 @@
 #version 330 core
 
+// build animated line segments for radial energy beams
 layout (points) in;
 layout (line_strip, max_vertices = 2) out;
 
